@@ -24,6 +24,7 @@ export default function RootLayout({ children }) {
       <body className="bg-black">
         <ThemeProvider>
           {children}
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
