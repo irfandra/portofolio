@@ -1,12 +1,122 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Github, Linkedin, Mail, ExternalLink } from "lucide-react";
 import * as THREE from "three";
 import dynamic from "next/dynamic";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import Model from "@/components/model2";
+import { useSpring, animated } from "@react-spring/three";
 
 const Scene = dynamic(() => import("@/components/scene"), { ssr: false });
+
+// Parallax Stars Component
+function ParallaxStars({ count = 2000, scrollY }) {
+  const pointsRef = useRef();
+  
+  // Initialize positions immediately with useMemo
+  const positions = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 50;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 50;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 50;
+    }
+    return pos;
+  }, [count]);
+
+  useFrame(() => {
+    if (pointsRef.current && scrollY !== undefined) {
+      pointsRef.current.position.y = scrollY * 0.002;
+      pointsRef.current.rotation.y = scrollY * 0.0001;
+    }
+  });
+
+  return (
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={count}
+          array={positions}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.05}
+        color="#4a9eff"
+        transparent
+        opacity={0.8}
+        sizeAttenuation
+      />
+    </points>
+  );
+}
+
+// Floating Geometric Shapes
+function FloatingShapes({ scrollY }) {
+  const group = useRef();
+  const shapes = useRef([]);
+
+  useEffect(() => {
+    shapes.current = Array.from({ length: 15 }, () => ({
+      position: [
+        (Math.random() - 0.5) * 30,
+        (Math.random() - 0.5) * 30,
+        (Math.random() - 0.5) * 30,
+      ],
+      rotation: [Math.random() * Math.PI, Math.random() * Math.PI, 0],
+      speed: 0.2 + Math.random() * 0.3,
+    }));
+  }, []);
+
+  useFrame((state) => {
+    if (group.current && scrollY !== undefined) {
+      group.current.position.y = scrollY * 0.003;
+      group.current.children.forEach((mesh, i) => {
+        const shape = shapes.current[i];
+        if (shape) {
+          mesh.rotation.x += 0.005 * shape.speed;
+          mesh.rotation.y += 0.003 * shape.speed;
+          mesh.position.y += Math.sin(state.clock.elapsedTime + i) * 0.001;
+        }
+      });
+    }
+  });
+
+  return (
+    <group ref={group}>
+      {shapes.current.map((shape, i) => (
+        <mesh key={i} position={shape.position} rotation={shape.rotation}>
+          {i % 3 === 0 ? (
+            <boxGeometry args={[0.5, 0.5, 0.5]} />
+          ) : i % 3 === 1 ? (
+            <octahedronGeometry args={[0.3]} />
+          ) : (
+            <torusGeometry args={[0.3, 0.1, 16, 100]} />
+          )}
+          <meshStandardMaterial
+            color={i % 2 === 0 ? "#1e90ff" : "#00ffff"}
+            wireframe={i % 4 === 0}
+            transparent
+            opacity={0.3}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// Parallax Layers Component
+function ParallaxLayers({ scrollY }) {
+  return (
+    <>
+      <ParallaxStars count={2000} scrollY={scrollY} />
+      <FloatingShapes scrollY={scrollY} />
+    </>
+  );
+}
 
 // 3D Animation Component
 const ThreeBackground = () => {
@@ -96,21 +206,52 @@ const ThreeBackground = () => {
 };
 
 export default function Portfolio() {
+  const [scrollY, setScrollY] = useState(0);
   const sections = {
     about: useRef(null),
     experiences: useRef(null),
+    education: useRef(null),
     projects: useRef(null),
     skills: useRef(null),
     contact: useRef(null),
   };
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const scrollTo = (section) =>
     sections[section]?.current?.scrollIntoView({ behavior: "smooth" });
+
+  function Rig() {
+    return useFrame((state) => {
+      state.camera.position.x = THREE.MathUtils.lerp(
+        state.camera.position.x,
+        1.5 + state.mouse.x / 4,
+        0.075
+      );
+      state.camera.position.y = THREE.MathUtils.lerp(
+        state.camera.position.y,
+        1.5 + state.mouse.y / 4,
+        0.075
+      );
+    });
+  }
+
   return (
     <div className="bg-black text-white min-h-screen flex flex-col relative">
-      {/* Three.js Background */}
-
-      <ThreeBackground />
+      {/* Three.js Parallax Background */}
+      <div className="fixed top-0 left-0 w-full h-full z-0">
+        <Canvas camera={{ position: [0, 0, 10], fov: 75 }}>
+          <ambientLight intensity={0.5} />
+          <pointLight position={[10, 10, 10]} intensity={1} />
+          <ParallaxLayers scrollY={scrollY} />
+        </Canvas>
+      </div>
 
       {/* Content with z-index to appear above the 3D background */}
       <div className="relative z-10">
@@ -140,6 +281,13 @@ export default function Portfolio() {
               >
                 Projects
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => scrollTo("education")}
+              >
+                Education
+              </Button>
               <Button variant="ghost" size="sm">
                 Skills
               </Button>
@@ -155,25 +303,60 @@ export default function Portfolio() {
           className="container mx-auto flex flex-col items-center justify-center text-center py-24 px-4"
           ref={sections.about}
         >
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">
-            Irfan<span className="text-blue-500"> Rahmanindra</span>
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-400 max-w-2xl mb-8">
-            IT professional with a degree in Electrical Engineering from the
-            University of Indonesia, adept at creating innovative solutions and
-            optimizing processes. Experienced in driving digital transformation,
-            platform development, and system automation, with a strong track
-            record of delivering high-quality outcomes. Highly ambitious,
-            detail-oriented, and dedicated to approaching challenges with
-            responsibility and a proactive mindset.
-          </p>
-          <div className="flex gap-4">
-            <Button className="gap-2">
-              View Projects <ExternalLink size={16} />
-            </Button>
-            <Button variant="outline" className="gap-2">
-              Download Resume <ExternalLink size={16} />
-            </Button>
+          <div className="grid grid-cols-5 w-full ">
+            <div className="col-span-2 text-left  border-0">
+              <h1 className="text-4xl md:text-6xl font-bold mb-6">
+                Irfan<span className="text-blue-500"> Rahmanindra</span>
+              </h1>
+              {/* <p className="text-xl md:text-2xl text-gray-400 max-w-2xl mb-8">
+                IT professional with a degree in Electrical Engineering from the
+                University of Indonesia, adept at creating innovative solutions
+                and optimizing processes. Experienced in driving digital
+                transformation, platform development, and system automation,
+                with a strong track record of delivering high-quality outcomes.
+                Highly ambitious, detail-oriented, and dedicated to approaching
+                challenges with responsibility and a proactive mindset.
+              </p> */}
+              <p className="text-xl md:text-2xl text-gray-400 max-w-2xl mb-8">
+                Full Stack Developer
+              </p>
+              <div className="flex gap-4">
+                <Button className="gap-2">
+                  View Projects <ExternalLink size={16} />
+                </Button>
+                <Button variant="outline" className="gap-2">
+                  Download Resume <ExternalLink size={16} />
+                </Button>
+              </div>
+            </div>
+
+            <div className="relative col-span-3 h-[400px]">
+              <Canvas shadows camera={{ position: [1, 1.5, 2.5], fov: 50 }}>
+                <ambientLight />
+                <directionalLight
+                  position={[-5, 5, 5]}
+                  castShadow
+                  shadow-mapSize-width={1024}
+                  shadow-mapSize-height={1024}
+                />
+                <group position={[0, -1, 0]}>
+                  <Suspense fallback={null}>
+                    <Model pose={4} position={[0, 0, 0]} />
+                    <Model pose={1} position={[1, 0, -1]} />
+                    <Model pose={2} position={[-1, 0, -1]} />
+                  </Suspense>
+                </group>
+                <mesh
+                  rotation={[-0.5 * Math.PI, 0, 0]}
+                  position={[0, -1, 0]}
+                  receiveShadow
+                >
+                  <planeGeometry args={[10, 10, 1, 1]} />
+                  <shadowMaterial transparent opacity={0.2} />
+                </mesh>
+                <Rig />
+              </Canvas>
+            </div>
           </div>
         </section>
 
@@ -358,6 +541,67 @@ export default function Portfolio() {
             </div>
           </div>
         </section>
+
+        {/* Education Section */}
+        <section
+          className="container mx-auto py-12 px-4"
+          ref={sections.education}
+        >
+          <h2 className="text-3xl font-bold mb-8">Education</h2>
+          <div className="space-y-4">
+            {[
+              {
+                period: "Aug 2025 - June 2026",
+                degree: "Master of Science in Information System",
+                institution: "Nanyang Technological University",
+                location: "Singapore",
+              },
+              {
+                period: "Oct 2019 - Mar 2020",
+                degree: "Electrical Engineering Exchange Student",
+                institution: "Universität Duisburg-Essen, Essen",
+                location: "Germany",
+              },
+              {
+                period: "Aug 2016 - Jan 2021",
+                degree: "Electrical Engineering Bachelor",
+                institution: "Universitas Indonesia",
+                location: "Indonesia",
+                detail: "GPA 3.27/4.00",
+              },
+              {
+                period: "Sep 2013 - Jun 2016",
+                degree: "Senior High School",
+                institution: "Labschool Jakarta",
+                location: "Indonesia",
+              },
+            ].map((education) => (
+              <Card
+                key={`${education.degree}-${education.institution}`}
+                className="bg-gray-900 border-gray-800"
+              >
+                <CardContent className="p-6">
+                  <div className="grid gap-4 md:grid-cols-5 md:items-center">
+                    <p className="text-sm font-semibold text-blue-400 md:col-span-1">
+                      {education.period}
+                    </p>
+                    <div className="md:col-span-3">
+                      <h3 className="text-xl font-bold">{education.degree}</h3>
+                      <p className="text-gray-400">
+                        {education.institution}
+                        {education.detail && ` - ${education.detail}`}
+                      </p>
+                    </div>
+                    <p className="text-gray-400 md:col-span-1 md:text-right">
+                      {education.location}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
         {/* Projects Section */}
         <section
           className="container mx-auto py-12 px-4"
