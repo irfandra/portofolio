@@ -256,10 +256,10 @@ export default function Portfolio() {
       {/* Content with z-index to appear above the 3D background */}
       <div className="relative z-10">
         {/* Header */}
-        <header className="container mx-auto py-6 px-4">
-          <nav className="flex items-center">
+        <header className="container mx-auto px-4 py-4 sm:py-6">
+          <nav className="flex items-center overflow-x-auto">
             {/* <h1 className="text-xl font-bold">Your Name</h1> */}
-            <div className="flex gap-4">
+            <div className="flex min-w-max gap-1 sm:gap-4">
               <Button
                 variant="ghost"
                 size="sm"
@@ -288,10 +288,18 @@ export default function Portfolio() {
               >
                 Education
               </Button>
-              <Button variant="ghost" size="sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => scrollTo("skills")}
+              >
                 Skills
               </Button>
-              <Button variant="ghost" size="sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => scrollTo("contact")}
+              >
                 Contact
               </Button>
             </div>
@@ -300,12 +308,12 @@ export default function Portfolio() {
 
         {/* Hero Section */}
         <section
-          className="container mx-auto flex flex-col items-center justify-center text-center py-24 px-4"
+          className="container mx-auto flex flex-col items-center justify-center px-4 py-16 text-center sm:py-24"
           ref={sections.about}
         >
-          <div className="grid grid-cols-5 w-full ">
-            <div className="col-span-2 text-left  border-0">
-              <h1 className="text-4xl md:text-6xl font-bold mb-6">
+          <div className="grid w-full grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-0">
+            <div className="col-span-1 border-0 text-left lg:col-span-2">
+              <h1 className="mb-6 text-4xl font-bold sm:text-5xl md:text-6xl">
                 Irfan<span className="text-blue-500"> Rahmanindra</span>
               </h1>
               {/* <p className="text-xl md:text-2xl text-gray-400 max-w-2xl mb-8">
@@ -317,20 +325,29 @@ export default function Portfolio() {
                 Highly ambitious, detail-oriented, and dedicated to approaching
                 challenges with responsibility and a proactive mindset.
               </p> */}
-              <p className="text-xl md:text-2xl text-gray-400 max-w-2xl mb-8">
-                Full Stack Developer
+              <p className="mb-8 max-w-2xl text-xl text-gray-400 md:text-2xl">
+                Full Stack Software Engineer | IT Specialist
               </p>
-              <div className="flex gap-4">
-                <Button className="gap-2">
+              <p className="mb-8 max-w-2xl text-base leading-7 text-gray-400 sm:text-lg">
+                Full-stack software engineer with 3+ years of experience
+                building enterprise web applications, integrations, and
+                workflow automation using Java/Spring, React/React Native, and
+                SQL.
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                <Button
+                  className="w-full gap-2 sm:w-auto"
+                  onClick={() => scrollTo("projects")}
+                >
                   View Projects <ExternalLink size={16} />
                 </Button>
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="w-full gap-2 sm:w-auto">
                   Download Resume <ExternalLink size={16} />
                 </Button>
               </div>
             </div>
 
-            <div className="relative col-span-3 h-[400px]">
+            <div className="relative col-span-1 h-[280px] min-w-0 sm:h-[400px] lg:col-span-3">
               <Canvas shadows camera={{ position: [1, 1.5, 2.5], fov: 50 }}>
                 <ambientLight />
                 <directionalLight
@@ -365,180 +382,76 @@ export default function Portfolio() {
         </section> */}
         {/* Experiences Section */}
         <section
-          className="container mx-auto py-12 px-4"
+          className="container mx-auto px-4 py-10 sm:py-12"
           ref={sections.experiences}
         >
-          <h2 className="text-3xl font-bold mb-8">Experiences</h2>
-          <div>
-            <div className="grid grid-cols-5 gap-6">
-              <>
-                {" "}
-                <Card className="bg-transparent border-gray-800 ">
-                  <CardContent className="mx-auto my-auto">
-                    <h3 className="text-l font-bold mb-2">
-                      February 2024 - December 2024
-                    </h3>
-                  </CardContent>
-                </Card>
-                <Card className="bg-gray-900 border-gray-800 col-span-4">
-                  <CardContent className="p-6">
-                    <h3 className="text-xl font-bold mb-1 italic">
-                      Sinarmas Mining
-                    </h3>
-                    <h3 className="text-xl font-bold mb-2">
-                      AI Governance and Tech Experience Specialist
-                    </h3>
-                    <ul className="list-disc text-gray-400 mb-4">
-                      <li>
-                        Project Approval Digitalization: Streamlined the project
-                        approval process by transforming workflows from initial
-                        approval to project completion into a fully digital
-                        system. Integrated the solution with SAP and multiple
-                        platforms to ensure seamless access to comprehensive
-                        data and improve operational efficiency
-                      </li>
-                      <li>
-                        AI Hackathon: Conceptualized and organized a
-                        company-wide hackathon to drive AI-focused innovation.
-                        The event successfully identified talent and generated
-                        actionable ideas, advancing the organization’s AI
-                        strategy and initiatives.
-                      </li>
-                      <li>
-                        Company Website Development: Designed and developed a
-                        professional company profile website featuring an
-                        integrated booking system and payment gateway. This
-                        solution streamlined the registration and payment
-                        processes for all training programs, enhancing user
-                        convenience and operational effectiveness.
-                      </li>
-                    </ul>
-
-                    <div className="flex gap-2">
-                      <Button variant="secondary" size="sm">
-                        Demo
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        Code
-                      </Button>
+          <h2 className="mb-8 text-3xl font-bold">Experience</h2>
+          <div className="space-y-4">
+            {[
+              {
+                period: "Feb 2024 - Dec 2024",
+                company: "Sinarmas Mining",
+                role: "AI Governance and Tech Experience Specialist",
+                location: "Jakarta, Indonesia",
+                highlights: [
+                  "Built a full-stack digital project approval system integrated with SAP and internal platforms, centralizing project data and improving process visibility.",
+                  "Organized a company-wide AI-focused hackathon to advance the company AI strategy.",
+                  "Designed a company profile and training website with booking and payment gateway integrations.",
+                ],
+              },
+              {
+                period: "Oct 2022 - Feb 2024",
+                company: "Sinarmas Mining",
+                role: "IT Development Program - Full Stack Engineer",
+                location: "Jakarta, Indonesia",
+                description: "6 months of intensive learning and 10 months of hands-on training.",
+                highlights: [
+                  "Improved operational efficiency by 90% and saved approximately Rp. 1.1 billion through a digital employee recognition program.",
+                  "Built project tracking with calendar views and automated WhatsApp/email reminders, reducing costs by about Rp. 473 million and improving execution efficiency by 70%.",
+                  "Developed real-time internal messaging with the WhatsApp Business API.",
+                  "Contributed to a CSR platform, React Native news page, and CMS for news, content, and registrations.",
+                  "Enhanced an internal ERP system through new modules, feature improvements, and technical issue resolution.",
+                ],
+              },
+              {
+                period: "Mar 2022 - Oct 2022",
+                company: "PT. Indocyber Global Teknologi",
+                role: "Junior Java Developer",
+                location: "Jakarta, Indonesia",
+                highlights: [
+                  "Built full-stack CRUD applications using Java, Spring Boot/MVC, REST APIs, and SQL Server.",
+                  "Designed relational database schemas and optimized SQL queries to improve application performance.",
+                ],
+              },
+              {
+                period: "Jul 2019 - Sep 2019",
+                company: "PT. Toyota Motor Manufacturing Indonesia",
+                role: "Internship",
+                location: "Jakarta, Indonesia",
+                highlights: [
+                  "Learned operation, control, and monitoring of electrical power systems at a production plant, including a 7,615 KVA 20KV system, transformers, capacitor banks, MV/LV panels, bus ducts, and emergency generators.",
+                ],
+              },
+            ].map((experience) => (
+              <Card key={`${experience.company}-${experience.role}`} className="border-gray-800 bg-gray-900">
+                <CardContent className="p-6">
+                  <div className="grid gap-4 md:grid-cols-5">
+                    <div className="md:col-span-1">
+                      <p className="text-sm font-semibold text-blue-400">{experience.period}</p>
+                      <p className="mt-1 text-sm text-gray-500">{experience.location}</p>
                     </div>
-                  </CardContent>
-                </Card>
-              </>
-              <>
-                <Card className="bg-transparent border-gray-800 ">
-                  <CardContent className="mx-auto my-auto">
-                    <h3 className="text-l font-bold mb-2">
-                      October 2022 - February 2024
-                    </h3>
-                  </CardContent>
-                </Card>
-                <Card className="bg-gray-900 border-gray-800 col-span-4">
-                  <CardContent className="p-6">
-                    <h3 className="text-xl font-bold mb-1 italic">
-                      Sinarmas Mining
-                    </h3>
-                    <h3 className="text-xl font-bold mb-2">
-                      Information Technology Development Program
-                    </h3>
-                    <ul className="list-disc text-gray-400 mb-4">
-                      <p>
-                        6 months of intensive learning and 10 months of hands-on
-                        training across diverse projects.
-                      </p>
-                      <li>
-                        Automated Systems Development: Designed and implemented
-                        algorithms for calculating points in loyalty systems,
-                        streamlining processes for digital certificate
-                        generation, and automating email communication workflows
-                        to enhance user engagement and operational efficiency.
-                      </li>
-                      <li>
-                        Project Management Tools: Created a comprehensive
-                        digital calendar system to facilitate project timeline
-                        organization for senior management. Automated deadline
-                        reminders and notifications via WhatsApp and email,
-                        improving communication and ensuring timely task
-                        completion. Designed summary dashboards to provide
-                        stakeholders with clear and actionable project insights.
-                        Real-Time Notification Systems: Integrated the WhatsApp
-                        Business API to enable seamless, real-time notifications
-                        for users, ensuring efficient communication and prompt
-                        updates.
-                      </li>
-                      <li>
-                        Platform and Application Development: Contributed to the
-                        development of a corporate social responsibility (CSR)
-                        platform by designing and optimizing its front-end
-                        interface. Developed a mobile-friendly news page using
-                        React Native to enhance accessibility and user
-                        experience. Built a content management system (CMS)
-                        front end to support the organization and administration
-                        of news, content, and registrations.
-                      </li>
-                      <li>
-                        Feature Enhancements and Debugging: Worked on improving
-                        existing platform features and developing new
-                        functionalities to meet evolving user needs. Diagnosed
-                        and resolved technical bugs, ensuring system reliability
-                        and performance optimization.
-                      </li>
-                    </ul>
-
-                    <div className="flex gap-2">
-                      <Button variant="secondary" size="sm">
-                        Demo
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        Code
-                      </Button>
+                    <div className="md:col-span-4">
+                      <h3 className="text-xl font-bold">{experience.role}</h3>
+                      <p className="mb-3 italic text-gray-400">{experience.company}</p>
+                      {experience.description && <p className="mb-3 text-gray-400">{experience.description}</p>}
+                      <ul className="list-disc space-y-2 pl-5 text-gray-400">
+                        {experience.highlights.map((highlight) => <li key={highlight}>{highlight}</li>)}
+                      </ul>
                     </div>
-                  </CardContent>
-                </Card>
-              </>
-              <>
-                <Card className="bg-transparent border-gray-800 ">
-                  <CardContent className="mx-auto my-auto">
-                    <h3 className="text-l font-bold mb-2">
-                      March 2022 - October 2022
-                    </h3>
-                  </CardContent>
-                </Card>
-                <Card className="bg-gray-900 border-gray-800 col-span-4">
-                  <CardContent className="p-6">
-                    <h3 className="text-xl font-bold mb-1 italic">
-                      Indocyber Global Teknologi
-                    </h3>
-                    <h3 className="text-xl font-bold mb-2">
-                      Junior Java Developer
-                    </h3>
-                    <ul className="list-disc text-gray-400 mb-4">
-                      <p>
-                        Completed an intensive bootcamp, where I gained hands-on
-                        experience and developed strong skills in REST APIs,
-                        JSON, Spring MVC, Spring Framework, HTML5, SQL Server
-                        Management Studio, Object-Oriented Programming (OOP),
-                        Cascading Style Sheets (CSS), Spring Boot, Java, and
-                        Microsoft SQL Server. Following this, I had the
-                        opportunity to further refine these skills through
-                        on-the-job experience, where I applied and deepened my
-                        expertise in these technologies within a professional
-                        setting.
-                      </p>
-                    </ul>
-
-                    <div className="flex gap-2">
-                      <Button variant="secondary" size="sm">
-                        Demo
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        Code
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </section>
 
@@ -555,6 +468,7 @@ export default function Portfolio() {
                 degree: "Master of Science in Information System",
                 institution: "Nanyang Technological University",
                 location: "Singapore",
+                detail: "GPA 4.35/5.00",
               },
               {
                 period: "Oct 2019 - Mar 2020",
@@ -568,12 +482,6 @@ export default function Portfolio() {
                 institution: "Universitas Indonesia",
                 location: "Indonesia",
                 detail: "GPA 3.27/4.00",
-              },
-              {
-                period: "Sep 2013 - Jun 2016",
-                degree: "Senior High School",
-                institution: "Labschool Jakarta",
-                location: "Indonesia",
               },
             ].map((education) => (
               <Card
@@ -589,7 +497,7 @@ export default function Portfolio() {
                       <h3 className="text-xl font-bold">{education.degree}</h3>
                       <p className="text-gray-400">
                         {education.institution}
-                        {education.detail && ` - ${education.detail}`}
+                        {education.detail && ` | ${education.detail}`}
                       </p>
                     </div>
                     <p className="text-gray-400 md:col-span-1 md:text-right">
@@ -604,106 +512,114 @@ export default function Portfolio() {
 
         {/* Projects Section */}
         <section
-          className="container mx-auto py-12 px-4"
+          className="container mx-auto px-4 py-10 sm:py-12"
           ref={sections.projects}
         >
-          <h2 className="text-3xl font-bold mb-8">Featured Projects</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Project Card 1 */}
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-6">
-                <div className="aspect-video bg-gray-800 rounded-md mb-4"></div>
-                <h3 className="text-xl font-bold mb-2">Project Name</h3>
-                <p className="text-gray-400 mb-4">
-                  A brief description of the project and the technologies used.
-                </p>
-                <div className="flex gap-2">
-                  <Button variant="secondary" size="sm">
-                    Demo
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Code
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Project Card 2 */}
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-6">
-                <div className="aspect-video bg-gray-800 rounded-md mb-4"></div>
-                <h3 className="text-xl font-bold mb-2">Project Name</h3>
-                <p className="text-gray-400 mb-4">
-                  A brief description of the project and the technologies used.
-                </p>
-                <div className="flex gap-2">
-                  <Button variant="secondary" size="sm">
-                    Demo
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Code
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Project Card 3 */}
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-6">
-                <div className="aspect-video bg-gray-800 rounded-md mb-4"></div>
-                <h3 className="text-xl font-bold mb-2">Project Name</h3>
-                <p className="text-gray-400 mb-4">
-                  A brief description of the project and the technologies used.
-                </p>
-                <div className="flex gap-2">
-                  <Button variant="secondary" size="sm">
-                    Demo
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Code
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        {/* Skills Section */}
-        <section className="container mx-auto py-12 px-4">
-          <h2 className="text-3xl font-bold mb-8">Skills</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* Skill Items */}
+          <h2 className="mb-8 text-3xl font-bold">Independent and Academic Projects</h2>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {[
-              "React",
-              "Next.js",
-              "TypeScript",
-              "Node.js",
-              "Tailwind CSS",
-              "MongoDB",
-              "GraphQL",
-              "Git",
-            ].map((skill) => (
-              <Card key={skill} className="bg-gray-900 border-gray-800">
-                <CardContent className="flex items-center justify-center p-6">
-                  <span className="text-lg">{skill}</span>
+              ["Zeal", "End-to-end NFT authenticity platform for brand protection with blockchain-based minting and verification, secure backend APIs, and a companion mobile app."],
+              ["TrustMark", "Product catalog and supply chain tracking platform with QR code generation for provenance verification."],
+              ["Receipt Hub", "Receipt and reimbursement management platform that digitizes expense submission, approval, and tracking workflows."],
+              ["Data Mining", "Coursework projects for NTU's Data Mining and Machine Learning module, applying classification and optimization algorithms to real-world datasets in Python and Jupyter."],
+            ].map(([name, description]) => (
+              <Card key={name} className="border-gray-800 bg-gray-900">
+                <CardContent className="p-6">
+                  <h3 className="mb-2 text-xl font-bold text-blue-400">{name}</h3>
+                  <p className="text-gray-400">{description}</p>
                 </CardContent>
               </Card>
             ))}
           </div>
         </section>
 
+        {/* Skills Section */}
+        <section
+          className="container mx-auto px-4 py-10 sm:py-12"
+          ref={sections.skills}
+        >
+          <h2 className="mb-8 text-3xl font-bold">Technical Skills</h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {[
+              ["Backend", "Node.js, Java (Spring Boot/MVC), REST APIs, Microservices"],
+              ["Frontend", "React.js, React Native, Angular, Next.js"],
+              ["Databases", "SQL Server, MySQL, PostgreSQL"],
+              ["Tools & Platforms", "Docker, Git, Linux, Windows, WhatsApp Business API, Payment Gateways, SAP Integration"],
+              ["Blockchain/Web3", "Solidity, Hardhat, Polygon, Smart Contracts, NFT Minting, Truffle"],
+              ["Languages", "JavaScript/TypeScript, Java, Solidity, Golang, PHP, Python, C++, SQL"],
+            ].map(([category, skills]) => (
+              <Card key={category} className="border-gray-800 bg-gray-900">
+                <CardContent className="p-6">
+                  <h3 className="mb-2 text-lg font-bold text-blue-400">{category}</h3>
+                  <p className="text-gray-400">{skills}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* Certifications and Leadership Section */}
+        <section className="container mx-auto grid grid-cols-1 gap-6 px-4 py-10 sm:py-12 lg:grid-cols-2">
+          <div>
+            <h2 className="mb-8 text-3xl font-bold">Certifications</h2>
+            <div className="space-y-3">
+              {[
+                ["IELTS Certification", "British Council - Band Score 7.0 (Jan 2025 - Jan 2027)"],
+                ["Applied Scrum for Agile Project Management", "University of Maryland, edX (Mar 2024)"],
+                ["Microsoft Azure AI Fundamentals: AI Overview", "Microsoft (Feb 2024)"],
+                ["Business Presentation Skills", "PPM Manajemen (Nov 2023)"],
+                ["React Native, React JS, and Golang", "Enigma Camp (Apr - Jun 2023)"],
+                ["Intensive German Language Course A1 and A2", "Mercator Science & Education (2018 - 2019)"],
+              ].map(([name, issuer]) => (
+                <Card key={name} className="border-gray-800 bg-gray-900">
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold">{name}</h3>
+                    <p className="text-sm text-gray-400">{issuer}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h2 className="mb-8 text-3xl font-bold">Leadership & Service</h2>
+            <div className="space-y-3">
+              {[
+                ["Person in Charge", "Interweek - Managed schedule and finance of a university futsal competition (2018)"],
+                ["Person in Charge", "Disciplinary Commission FTUI - Oversaw discipline during student orientation (2018)"],
+                ["Staff", "Health and Safety at Universitas Indonesia Olympics (2016)"],
+                ["Member", "Student Consultative Assembly FTUI (2016 - 2017)"],
+                ["Liaison Officer", "Labsproject - Coordinated communication between two organizations (2015)"],
+                ["Chief Operational Officer", "Vashka Company - Managed operational activities (2014)"],
+              ].map(([role, detail]) => (
+                <Card key={`${role}-${detail}`} className="border-gray-800 bg-gray-900">
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold">{role}</h3>
+                    <p className="text-sm text-gray-400">{detail}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Contact Section */}
-        <section className="container mx-auto py-12 px-4">
-          <h2 className="text-3xl font-bold mb-8">Get In Touch</h2>
+        <section className="container mx-auto px-4 py-10 sm:py-12" ref={sections.contact}>
+          <h2 className="mb-8 text-3xl font-bold">Get In Touch</h2>
           <div className="flex flex-wrap justify-center gap-4">
-            <Button variant="outline" className="gap-2">
-              <Github size={16} /> GitHub
+            <Button variant="outline" className="gap-2" asChild>
+              <a href="https://github.com/irfandra" target="_blank" rel="noreferrer">
+                <Github size={16} /> GitHub
+              </a>
             </Button>
-            <Button variant="outline" className="gap-2">
-              <Linkedin size={16} /> LinkedIn
+            <Button variant="outline" className="gap-2" asChild>
+              <a href="https://linkedin.com/in/irfan-rahmanindra-35a714154/" target="_blank" rel="noreferrer">
+                <Linkedin size={16} /> LinkedIn
+              </a>
             </Button>
-            <Button variant="outline" className="gap-2">
-              <Mail size={16} /> your.email@example.com
+            <Button variant="outline" className="gap-2" asChild>
+              <a href="mailto:irfanrahmanindra@gmail.com">
+                <Mail size={16} /> irfanrahmanindra@gmail.com
+              </a>
             </Button>
           </div>
         </section>
@@ -715,14 +631,20 @@ export default function Portfolio() {
               &copy; 2025 Irfan Rahmanindra. All rights reserved.
             </p>
             <div className="flex gap-4 mt-4 md:mt-0">
-              <Button variant="ghost" size="icon">
-                <Github size={20} />
+              <Button variant="ghost" size="icon" asChild>
+                <a href="https://github.com/irfandra" target="_blank" rel="noreferrer" aria-label="GitHub">
+                  <Github size={20} />
+                </a>
               </Button>
-              <Button variant="ghost" size="icon">
-                <Linkedin size={20} />
+              <Button variant="ghost" size="icon" asChild>
+                <a href="https://linkedin.com/in/irfan-rahmanindra-35a714154/" target="_blank" rel="noreferrer" aria-label="LinkedIn">
+                  <Linkedin size={20} />
+                </a>
               </Button>
-              <Button variant="ghost" size="icon">
-                <Mail size={20} />
+              <Button variant="ghost" size="icon" asChild>
+                <a href="mailto:irfanrahmanindra@gmail.com" aria-label="Email">
+                  <Mail size={20} />
+                </a>
               </Button>
             </div>
           </div>
