@@ -1,18 +1,63 @@
 "use client";
-import { Suspense, useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Github, Linkedin, Mail, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import {
+  Github,
+  Linkedin,
+  Mail,
+  ExternalLink,
+  Braces,
+  Database,
+  Cloud,
+  Smartphone,
+  Wrench,
+  BrainCircuit,
+  Code2,
+  Network,
+  CreditCard,
+  Blocks,
+  FileCode2,
+  Globe2,
+  Award,
+  BookOpenCheck,
+  Presentation,
+  Languages,
+} from "lucide-react";
+import {
+  SiReact,
+  SiAngular,
+  SiNextdotjs,
+  SiNodedotjs,
+  SiSpringboot,
+  SiPostgresql,
+  SiMysql,
+  SiDocker,
+  SiGit,
+  SiLinux,
+  SiSap,
+  SiSolidity,
+  SiPolygon,
+  SiTypescript,
+  SiJavascript,
+  SiPython,
+  SiPhp,
+  SiCplusplus,
+} from "react-icons/si";
 import * as THREE from "three";
-import dynamic from "next/dynamic";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import Model from "@/components/model2";
-import { useSpring, animated } from "@react-spring/three";
+import { Canvas, useFrame } from "@react-three/fiber";
+import Lenis from "lenis";
+import { projects } from "@/lib/projects";
 
-const Scene = dynamic(() => import("@/components/scene"), { ssr: false });
+const heroWords = [
+  { text: "Creative.", className: "hero-word--blue" },
+  { text: "Efficient.", className: "hero-word--red" },
+  { text: "Advanced.", className: "" },
+];
 
 // Parallax Stars Component
-function ParallaxStars({ count = 2000, scrollY }) {
+function ParallaxStars({ count = 2000, scrollYRef }) {
   const pointsRef = useRef();
   
   // Initialize positions immediately with useMemo
@@ -27,9 +72,9 @@ function ParallaxStars({ count = 2000, scrollY }) {
   }, [count]);
 
   useFrame(() => {
-    if (pointsRef.current && scrollY !== undefined) {
-      pointsRef.current.position.y = scrollY * 0.002;
-      pointsRef.current.rotation.y = scrollY * 0.0001;
+    if (pointsRef.current && scrollYRef.current !== undefined) {
+      pointsRef.current.position.y = scrollYRef.current * 0.002;
+      pointsRef.current.rotation.y = scrollYRef.current * 0.0001;
     }
   });
 
@@ -55,7 +100,7 @@ function ParallaxStars({ count = 2000, scrollY }) {
 }
 
 // Floating Geometric Shapes
-function FloatingShapes({ scrollY }) {
+function FloatingShapes({ scrollYRef }) {
   const group = useRef();
   const shapes = useRef([]);
 
@@ -72,8 +117,8 @@ function FloatingShapes({ scrollY }) {
   }, []);
 
   useFrame((state) => {
-    if (group.current && scrollY !== undefined) {
-      group.current.position.y = scrollY * 0.003;
+    if (group.current && scrollYRef.current !== undefined) {
+      group.current.position.y = scrollYRef.current * 0.003;
       group.current.children.forEach((mesh, i) => {
         const shape = shapes.current[i];
         if (shape) {
@@ -109,11 +154,10 @@ function FloatingShapes({ scrollY }) {
 }
 
 // Parallax Layers Component
-function ParallaxLayers({ scrollY }) {
+function ParallaxLayers({ scrollYRef }) {
   return (
     <>
-      <ParallaxStars count={2000} scrollY={scrollY} />
-      <FloatingShapes scrollY={scrollY} />
+      <ParallaxStars count={2000} scrollYRef={scrollYRef} />
     </>
   );
 }
@@ -206,7 +250,10 @@ const ThreeBackground = () => {
 };
 
 export default function Portfolio() {
-  const [scrollY, setScrollY] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [introPhase, setIntroPhase] = useState("orb");
+  const scrollYRef = useRef(0);
+  const lenisRef = useRef(null);
   const sections = {
     about: useRef(null),
     experiences: useRef(null),
@@ -217,15 +264,107 @@ export default function Portfolio() {
   };
 
   useEffect(() => {
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    if (prefersReducedMotion) {
+      setIsLoading(false);
+      setIntroPhase("ready");
+      return undefined;
+    }
+
+    const revealTimer = window.setTimeout(() => setIntroPhase("reveal"), 1500);
+    const loadingTimer = window.setTimeout(() => {
+      setIntroPhase("ready");
+      setIsLoading(false);
+    }, 3300);
+
+    return () => {
+      window.clearTimeout(revealTimer);
+      window.clearTimeout(loadingTimer);
+    };
+  }, []);
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    if (prefersReducedMotion) return undefined;
+
+    document.documentElement.classList.add("motion-ready");
+    const animatedElements = document.querySelectorAll(
+      ".motion-header, .motion-section, [data-slot='card']"
+    );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -8%" }
+    );
+
+    animatedElements.forEach((element) => observer.observe(element));
+
+    return () => {
+      observer.disconnect();
+      document.documentElement.classList.remove("motion-ready");
+    };
+  }, []);
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    if (prefersReducedMotion) return undefined;
+
+    const lenis = new Lenis({
+      duration: 1.1,
+      smoothWheel: true,
+      syncTouch: false,
+    });
+    let animationFrame;
+
+    const animate = (time) => {
+      lenis.raf(time);
+      animationFrame = requestAnimationFrame(animate);
+    };
+
+    lenisRef.current = lenis;
+    animationFrame = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      lenis.destroy();
+      lenisRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
     const handleScroll = () => {
-      setScrollY(window.scrollY);
+      scrollYRef.current = window.scrollY;
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const scrollTo = (section) =>
-    sections[section]?.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollTo = (section) => {
+    const target = sections[section]?.current;
+    if (!target) return;
+
+    if (lenisRef.current) {
+      lenisRef.current.scrollTo(target, { offset: -24 });
+      return;
+    }
+
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   function Rig() {
     return useFrame((state) => {
@@ -243,22 +382,68 @@ export default function Portfolio() {
   }
 
   return (
-    <div className="bg-black text-white min-h-screen flex flex-col relative">
+    <div className={`page-shell ${isLoading ? "is-loading" : "is-ready"} intro-${introPhase} bg-black text-white min-h-screen flex flex-col relative`}>
+      <div
+        className={`site-loader ${isLoading ? "is-loading" : "is-loaded"}`}
+        aria-hidden={!isLoading}
+      >
+        <div className="site-loader__burst" aria-hidden="true">
+          <div className="site-loader__particles">
+            {Array.from({ length: 72 }, (_, index) => {
+              const angle = index * 2.399;
+              const distance = 16 + ((index * 17) % 68);
+              const x = 50 + Math.cos(angle) * distance;
+              const y = 50 + Math.sin(angle) * distance * 0.62;
+              const size = 1 + ((index * 7) % 5);
+              const color = index % 3 === 0 ? "#ef6b6b" : index % 3 === 1 ? "#4a9eff" : "#9b7bff";
+
+              return (
+                <i
+                  key={index}
+                  style={{
+                    "--particle-x": `${x}%`,
+                    "--particle-y": `${y}%`,
+                    "--particle-size": `${size}px`,
+                    "--particle-color": color,
+                    "--particle-index": index,
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Three.js Parallax Background */}
-      <div className="fixed top-0 left-0 w-full h-full z-0">
-        <Canvas camera={{ position: [0, 0, 10], fov: 75 }}>
+      <div className="background-canvas fixed top-0 left-0 z-0 h-full w-full">
+        <Canvas
+          dpr={[1, 1.5]}
+          performance={{ min: 0.6 }}
+          camera={{ position: [0, 0, 10], fov: 75 }}
+        >
           <ambientLight intensity={0.5} />
           <pointLight position={[10, 10, 10]} intensity={1} />
-          <ParallaxLayers scrollY={scrollY} />
+          <ParallaxLayers scrollYRef={scrollYRef} />
         </Canvas>
       </div>
 
       {/* Content with z-index to appear above the 3D background */}
-      <div className="relative z-10">
+      <div className="page-content relative z-10">
         {/* Header */}
-        <header className="container mx-auto px-4 py-4 sm:py-6">
-          <nav className="flex items-center overflow-x-auto">
-            {/* <h1 className="text-xl font-bold">Your Name</h1> */}
+        <header className="motion-header container mx-auto px-4 py-4 sm:py-6">
+          <nav className="flex items-center justify-between gap-6 overflow-x-auto">
+            <button
+              type="button"
+              className="shrink-0 text-left"
+              onClick={() => scrollTo("about")}
+            >
+              <span className="block text-xl font-semibold tracking-[0.08em] text-white">
+                IRFAN<span className="text-blue-500">R</span>
+              </span>
+              <span className="block text-[0.55rem] tracking-[0.28em] text-gray-500">
+                SOFTWARE / SYSTEMS / DESIGN
+              </span>
+            </button>
             <div className="flex min-w-max gap-1 sm:gap-4">
               <Button
                 variant="ghost"
@@ -308,73 +493,52 @@ export default function Portfolio() {
 
         {/* Hero Section */}
         <section
-          className="container mx-auto flex flex-col items-center justify-center px-4 py-16 text-center sm:py-24"
+          className="hero-section motion-section relative container mx-auto flex min-h-[calc(100svh-64px)] flex-col items-center justify-center overflow-hidden px-4 py-12 text-center sm:min-h-[calc(100svh-80px)] sm:py-16"
           ref={sections.about}
         >
-          <div className="grid w-full grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-0">
-            <div className="col-span-1 border-0 text-left lg:col-span-2">
-              <h1 className="mb-6 text-4xl font-bold sm:text-5xl md:text-6xl">
-                Irfan<span className="text-blue-500"> Rahmanindra</span>
-              </h1>
-              {/* <p className="text-xl md:text-2xl text-gray-400 max-w-2xl mb-8">
-                IT professional with a degree in Electrical Engineering from the
-                University of Indonesia, adept at creating innovative solutions
-                and optimizing processes. Experienced in driving digital
-                transformation, platform development, and system automation,
-                with a strong track record of delivering high-quality outcomes.
-                Highly ambitious, detail-oriented, and dedicated to approaching
-                challenges with responsibility and a proactive mindset.
-              </p> */}
-              <p className="mb-8 max-w-2xl text-xl text-gray-400 md:text-2xl">
-                Full Stack Software Engineer | IT Specialist
-              </p>
-              <p className="mb-8 max-w-2xl text-base leading-7 text-gray-400 sm:text-lg">
-                Full-stack software engineer with 3+ years of experience
-                building enterprise web applications, integrations, and
-                workflow automation using Java/Spring, React/React Native, and
-                SQL.
-              </p>
-              <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-                <Button
-                  className="w-full gap-2 sm:w-auto"
-                  onClick={() => scrollTo("projects")}
+          <div className="hero-aura hero-aura--blue" />
+          <div className="hero-aura hero-aura--red" />
+          <div className="hero-content relative z-10 max-w-6xl">
+            <p className="mb-5 text-xs font-semibold uppercase tracking-[0.3em] text-gray-400 sm:text-sm">
+              Full Stack Software Engineer / IT Specialist
+            </p>
+            <h1 className="hero-title hero-title--shared text-5xl font-bold sm:text-7xl lg:text-8xl">
+              {heroWords.map((word, index) => (
+                <span
+                  key={word.text}
+                  className={`hero-word ${word.className} hero-word--${index + 1}`}
                 >
-                  View Projects <ExternalLink size={16} />
-                </Button>
-                <Button variant="outline" className="w-full gap-2 sm:w-auto">
-                  Download Resume <ExternalLink size={16} />
-                </Button>
-              </div>
-            </div>
-
-            <div className="relative col-span-1 h-[280px] min-w-0 sm:h-[400px] lg:col-span-3">
-              <Canvas shadows camera={{ position: [1, 1.5, 2.5], fov: 50 }}>
-                <ambientLight />
-                <directionalLight
-                  position={[-5, 5, 5]}
-                  castShadow
-                  shadow-mapSize-width={1024}
-                  shadow-mapSize-height={1024}
-                />
-                <group position={[0, -1, 0]}>
-                  <Suspense fallback={null}>
-                    <Model pose={4} position={[0, 0, 0]} />
-                    <Model pose={1} position={[1, 0, -1]} />
-                    <Model pose={2} position={[-1, 0, -1]} />
-                  </Suspense>
-                </group>
-                <mesh
-                  rotation={[-0.5 * Math.PI, 0, 0]}
-                  position={[0, -1, 0]}
-                  receiveShadow
-                >
-                  <planeGeometry args={[10, 10, 1, 1]} />
-                  <shadowMaterial transparent opacity={0.2} />
-                </mesh>
-                <Rig />
-              </Canvas>
+                  {word.text}
+                </span>
+              ))}
+            </h1>
+            <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-gray-300 sm:text-xl">
+              Design • Full Stack Development • AI Integration
+            </p>
+            <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
+              <Button
+                className="hero-button hero-button--primary w-full rounded-full px-7 py-6 text-base sm:w-auto"
+                onClick={() => scrollTo("projects")}
+              >
+                Initiate System <ExternalLink size={16} />
+              </Button>
+              <Button
+                variant="outline"
+                className="hero-button w-full rounded-full px-7 py-6 text-base sm:w-auto"
+                onClick={() => scrollTo("contact")}
+              >
+                View Portfolio
+              </Button>
             </div>
           </div>
+          <button
+            type="button"
+            className="hero-scroll-cue absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-gray-500"
+            onClick={() => scrollTo("experiences")}
+            aria-label="Scroll to experience"
+          >
+            <span className="block text-2xl">↓</span>
+          </button>
         </section>
 
         {/* <section className="relative w-full h-[500px] overflow-y-scroll">
@@ -382,7 +546,7 @@ export default function Portfolio() {
         </section> */}
         {/* Experiences Section */}
         <section
-          className="container mx-auto px-4 py-10 sm:py-12"
+          className="motion-section container mx-auto px-4 py-10 sm:py-12"
           ref={sections.experiences}
         >
           <h2 className="mb-8 text-3xl font-bold">Experience</h2>
@@ -457,7 +621,7 @@ export default function Portfolio() {
 
         {/* Education Section */}
         <section
-          className="container mx-auto py-12 px-4"
+          className="motion-section container mx-auto py-12 px-4"
           ref={sections.education}
         >
           <h2 className="text-3xl font-bold mb-8">Education</h2>
@@ -469,12 +633,14 @@ export default function Portfolio() {
                 institution: "Nanyang Technological University",
                 location: "Singapore",
                 detail: "GPA 4.35/5.00",
+                logo: "/assets/universities/ntu.ico",
               },
               {
                 period: "Oct 2019 - Mar 2020",
                 degree: "Electrical Engineering Exchange Student",
                 institution: "Universität Duisburg-Essen, Essen",
                 location: "Germany",
+                logo: "/assets/universities/ude.ico",
               },
               {
                 period: "Aug 2016 - Jan 2021",
@@ -482,52 +648,66 @@ export default function Portfolio() {
                 institution: "Universitas Indonesia",
                 location: "Indonesia",
                 detail: "GPA 3.27/4.00",
+                logo: "/assets/universities/ui.png",
               },
-            ].map((education) => (
+            ].map((education) => {
+              return (
               <Card
                 key={`${education.degree}-${education.institution}`}
                 className="bg-gray-900 border-gray-800"
               >
                 <CardContent className="p-6">
-                  <div className="grid gap-4 md:grid-cols-5 md:items-center">
-                    <p className="text-sm font-semibold text-blue-400 md:col-span-1">
+                  <div className="grid gap-4 md:grid-cols-[4rem_1fr_8rem] md:items-center">
+                    <div className="flex size-12 items-center justify-center rounded-lg border border-blue-500/30 bg-blue-500/10 p-2">
+                      <img
+                        src={education.logo}
+                        alt={`${education.institution} logo`}
+                        className="size-8 object-contain"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div>
+                      <p className="mb-1 text-sm font-semibold text-blue-400">
                       {education.period}
-                    </p>
-                    <div className="md:col-span-3">
+                      </p>
                       <h3 className="text-xl font-bold">{education.degree}</h3>
                       <p className="text-gray-400">
                         {education.institution}
                         {education.detail && ` | ${education.detail}`}
                       </p>
                     </div>
-                    <p className="text-gray-400 md:col-span-1 md:text-right">
+                    <p className="text-gray-400 md:text-right">
                       {education.location}
                     </p>
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         </section>
 
         {/* Projects Section */}
         <section
-          className="container mx-auto px-4 py-10 sm:py-12"
+          className="motion-section container mx-auto px-4 py-10 sm:py-12"
           ref={sections.projects}
         >
           <h2 className="mb-8 text-3xl font-bold">Independent and Academic Projects</h2>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {[
-              ["Zeal", "End-to-end NFT authenticity platform for brand protection with blockchain-based minting and verification, secure backend APIs, and a companion mobile app."],
-              ["TrustMark", "Product catalog and supply chain tracking platform with QR code generation for provenance verification."],
-              ["Receipt Hub", "Receipt and reimbursement management platform that digitizes expense submission, approval, and tracking workflows."],
-              ["Data Mining", "Coursework projects for NTU's Data Mining and Machine Learning module, applying classification and optimization algorithms to real-world datasets in Python and Jupyter."],
-            ].map(([name, description]) => (
-              <Card key={name} className="border-gray-800 bg-gray-900">
-                <CardContent className="p-6">
-                  <h3 className="mb-2 text-xl font-bold text-blue-400">{name}</h3>
-                  <p className="text-gray-400">{description}</p>
-                </CardContent>
+            {projects.map((project) => (
+              <Card key={project.slug} className="border-gray-800 bg-gray-900">
+                <Link href={`/projects/${project.slug}`} className="block h-full">
+                  <CardContent className="flex h-full flex-col p-6">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                      {project.type}
+                    </p>
+                    <h3 className="mb-2 text-xl font-bold text-blue-400">{project.name}</h3>
+                    <p className="flex-1 text-gray-400">{project.description}</p>
+                    <span className="mt-6 text-sm font-semibold text-white">
+                      View project <span aria-hidden="true">-&gt;</span>
+                    </span>
+                  </CardContent>
+                </Link>
               </Card>
             ))}
           </div>
@@ -535,46 +715,79 @@ export default function Portfolio() {
 
         {/* Skills Section */}
         <section
-          className="container mx-auto px-4 py-10 sm:py-12"
+          className="motion-section container mx-auto px-4 py-10 sm:py-12"
           ref={sections.skills}
         >
-          <h2 className="mb-8 text-3xl font-bold">Technical Skills</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="mb-10 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-blue-400">
+                The toolkit
+              </p>
+              <h2 className="text-3xl font-bold sm:text-4xl">Tech Stack</h2>
+            </div>
+            <p className="max-w-sm text-sm leading-6 text-gray-500">
+              Technologies I use to turn complex workflows into reliable,
+              useful products.
+            </p>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-gray-800 bg-gray-950">
             {[
-              ["Backend", "Node.js, Java (Spring Boot/MVC), REST APIs, Microservices"],
-              ["Frontend", "React.js, React Native, Angular, Next.js"],
-              ["Databases", "SQL Server, MySQL, PostgreSQL"],
-              ["Tools & Platforms", "Docker, Git, Linux, Windows, WhatsApp Business API, Payment Gateways, SAP Integration"],
-              ["Blockchain/Web3", "Solidity, Hardhat, Polygon, Smart Contracts, NFT Minting, Truffle"],
-              ["Languages", "JavaScript/TypeScript, Java, Solidity, Golang, PHP, Python, C++, SQL"],
-            ].map(([category, skills]) => (
-              <Card key={category} className="border-gray-800 bg-gray-900">
-                <CardContent className="p-6">
-                  <h3 className="mb-2 text-lg font-bold text-blue-400">{category}</h3>
-                  <p className="text-gray-400">{skills}</p>
-                </CardContent>
-              </Card>
+              ["01", "Frontend", Braces, [["React.js", SiReact], ["React Native", SiReact], ["Angular", SiAngular], ["Next.js", SiNextdotjs]]],
+              ["02", "Backend", Wrench, [["Node.js", SiNodedotjs], ["Java", Code2], ["Spring Boot", SiSpringboot], ["REST APIs", Network], ["Microservices", Blocks]]],
+              ["03", "Data", Database, [["SQL Server", Database], ["MySQL", SiMysql], ["PostgreSQL", SiPostgresql], ["SQL", FileCode2]]],
+              ["04", "Cloud & Tools", Cloud, [["Docker", SiDocker], ["Git", SiGit], ["Linux", SiLinux], ["SAP Integration", SiSap], ["Payment Gateways", CreditCard]]],
+              ["05", "Mobile & Web3", Smartphone, [["Solidity", SiSolidity], ["Hardhat", Wrench], ["Polygon", SiPolygon], ["NFT Minting", Blocks], ["Smart Contracts", FileCode2]]],
+              ["06", "Languages & AI", BrainCircuit, [["TypeScript", SiTypescript], ["JavaScript", SiJavascript], ["Python", SiPython], ["Golang", Code2], ["PHP", SiPhp], ["C++", SiCplusplus]]],
+            ].map(([number, category, Icon, skills]) => (
+              <div
+                key={category}
+                className="group grid gap-5 border-b border-gray-800 p-5 last:border-b-0 sm:grid-cols-[7rem_10rem_1fr] sm:items-center sm:p-6"
+              >
+                <span className="text-sm font-semibold text-gray-600">{number}</span>
+                <div className="flex items-center gap-3 text-gray-300">
+                  <Icon size={18} className="text-blue-400 transition-transform duration-300 group-hover:rotate-6" />
+                  <h3 className="font-semibold">{category}</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {skills.map(([skill, SkillIcon]) => (
+                    <span
+                      key={skill}
+                      className="group/skill inline-flex items-center gap-2 rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-400 transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-500/60 hover:bg-blue-500/10 hover:text-blue-200"
+                    >
+                      <SkillIcon className="text-base text-gray-500 transition-colors group-hover/skill:text-blue-300" aria-hidden="true" />
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </section>
 
         {/* Certifications and Leadership Section */}
-        <section className="container mx-auto grid grid-cols-1 gap-6 px-4 py-10 sm:py-12 lg:grid-cols-2">
+        <section className="motion-section container mx-auto grid grid-cols-1 gap-6 px-4 py-10 sm:py-12 lg:grid-cols-2">
           <div>
             <h2 className="mb-8 text-3xl font-bold">Certifications</h2>
             <div className="space-y-3">
               {[
-                ["IELTS Certification", "British Council - Band Score 7.0 (Jan 2025 - Jan 2027)"],
-                ["Applied Scrum for Agile Project Management", "University of Maryland, edX (Mar 2024)"],
-                ["Microsoft Azure AI Fundamentals: AI Overview", "Microsoft (Feb 2024)"],
-                ["Business Presentation Skills", "PPM Manajemen (Nov 2023)"],
-                ["React Native, React JS, and Golang", "Enigma Camp (Apr - Jun 2023)"],
-                ["Intensive German Language Course A1 and A2", "Mercator Science & Education (2018 - 2019)"],
-              ].map(([name, issuer]) => (
+                ["IELTS Certification", "British Council - Band Score 7.0 (Jan 2025 - Jan 2027)", Languages],
+                ["Applied Scrum for Agile Project Management", "University of Maryland, edX (Mar 2024)", BookOpenCheck],
+                ["Microsoft Azure AI Fundamentals: AI Overview", "Microsoft (Feb 2024)", Award],
+                ["Business Presentation Skills", "PPM Manajemen (Nov 2023)", Presentation],
+                ["React Native, React JS, and Golang", "Enigma Camp (Apr - Jun 2023)", Code2],
+                ["Intensive German Language Course A1 and A2", "Mercator Science & Education (2018 - 2019)", Globe2],
+              ].map(([name, issuer, Icon]) => (
                 <Card key={name} className="border-gray-800 bg-gray-900">
                   <CardContent className="p-4">
-                    <h3 className="font-semibold">{name}</h3>
-                    <p className="text-sm text-gray-400">{issuer}</p>
+                    <div className="flex items-center gap-4">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-300">
+                        <Icon size={19} aria-hidden="true" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{name}</h3>
+                        <p className="text-sm text-gray-400">{issuer}</p>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -603,7 +816,7 @@ export default function Portfolio() {
         </section>
 
         {/* Contact Section */}
-        <section className="container mx-auto px-4 py-10 sm:py-12" ref={sections.contact}>
+        <section className="motion-section container mx-auto px-4 py-10 sm:py-12" ref={sections.contact}>
           <h2 className="mb-8 text-3xl font-bold">Get In Touch</h2>
           <div className="flex flex-wrap justify-center gap-4">
             <Button variant="outline" className="gap-2" asChild>

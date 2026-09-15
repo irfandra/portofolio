@@ -69,3 +69,6 @@ export default function Model({ pose, ...props }) {
     </group>
   )
 }
+
+useGLTF.preload("/3Dmodel/stacy.glb")
+useTexture.preload("/3Dmodel/stacy.jpg")
