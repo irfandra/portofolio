@@ -51,9 +51,8 @@ import Lenis from "lenis";
 import { projects } from "@/lib/projects";
 
 const heroWords = [
-  { text: "Creative.", className: "hero-word--blue" },
-  { text: "Efficient.", className: "hero-word--red" },
-  { text: "Advanced.", className: "" },
+  { text: "Irfan", className: "hero-word--blue" },
+  { text: "Rahmanindra", className: "" },
 ];
 
 // Parallax Stars Component
@@ -162,96 +161,211 @@ function ParallaxLayers({ scrollYRef }) {
   );
 }
 
-// 3D Animation Component
-const ThreeBackground = () => {
-  const mountRef = useRef(null);
+
+// ─── Big-Bang canvas ──────────────────────────────────────────────────────────
+// All rendering is imperative (rAF loop) — not React renders — for smooth 60fps.
+const PARTICLE_COLORS = [
+  '#4a9eff', '#7b6fff', '#ef6b6b', '#c4b5fd',
+  '#ffffff', '#38d9f5', '#a78bfa', '#ff8fa3', '#60efff',
+];
+
+function BigBangCanvas() {
+  const canvasRef = useRef(null);
 
   useEffect(() => {
-    // Initialize scene
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      100
-    );
-    const renderer = new THREE.WebGLRenderer({ alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x000000, 0);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    // Add renderer to the DOM
-    mountRef.current.appendChild(renderer.domElement);
+    // Skip animation for reduced-motion preference
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    // Create particles
-    const particlesGeometry = new THREE.BufferGeometry();
-    const particlesCount = 5000;
+    const ctx = canvas.getContext('2d');
 
-    const posArray = new Float32Array(particlesCount * 3);
-    for (let i = 0; i < particlesCount * 3; i++) {
-      posArray[i] = (Math.random() - 0.5) * 5;
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    // ── Particle class ────────────────────────────────────────
+    class Particle {
+      constructor(x, y, fast = true) {
+        this.x = x;
+        this.y = y;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = fast
+          ? Math.random() * 10 + 2
+          : Math.random() * 2.5 + 0.4;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.size = fast
+          ? Math.random() * 2 + 0.4
+          : Math.random() * 5 + 2;
+        this.origSize = this.size;
+        this.color = PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)];
+        this.life = 1;
+        this.decay = fast
+          ? Math.random() * 0.007 + 0.003
+          : Math.random() * 0.003 + 0.001;
+        this.trail = [];
+        this.maxTrail = fast
+          ? Math.floor(Math.random() * 12) + 6
+          : Math.floor(Math.random() * 5) + 2;
+      }
+
+      update() {
+        this.trail.push({ x: this.x, y: this.y });
+        if (this.trail.length > this.maxTrail) this.trail.shift();
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += 0.018;   // gentle gravity
+        this.vx *= 0.994;
+        this.vy *= 0.994;
+        this.life -= this.decay;
+        this.size = this.origSize * Math.max(0, this.life);
+      }
+
+      draw(c) {
+        if (this.life <= 0 || this.size < 0.05) return;
+        c.save();
+        // Trail
+        for (let i = 0; i < this.trail.length; i++) {
+          const ratio = i / this.trail.length;
+          c.globalAlpha = ratio * this.life * 0.35;
+          c.beginPath();
+          c.arc(this.trail[i].x, this.trail[i].y, Math.max(0.05, this.size * ratio * 0.7), 0, Math.PI * 2);
+          c.fillStyle = this.color;
+          c.fill();
+        }
+        // Glow halo
+        c.globalAlpha = this.life * 0.2;
+        c.beginPath();
+        c.arc(this.x, this.y, this.size * 5, 0, Math.PI * 2);
+        c.fillStyle = this.color;
+        c.fill();
+        // Core dot
+        c.globalAlpha = Math.min(1, this.life * 1.2);
+        c.beginPath();
+        c.arc(this.x, this.y, Math.max(0.05, this.size), 0, Math.PI * 2);
+        c.fillStyle = this.color;
+        c.fill();
+        c.restore();
+      }
+
+      isDead() { return this.life <= 0; }
     }
 
-    particlesGeometry.setAttribute(
-      "position",
-      new THREE.BufferAttribute(posArray, 3)
-    );
+    // ── Animation loop ────────────────────────────────────────
+    let startTime = null;
+    let particles = [];
+    let burstFired = false;
+    let running = true;
+    let animId;
 
-    // Create material
-    const particlesMaterial = new THREE.PointsMaterial({
-      size: 0.005,
-      color: 0x1e90ff,
-    });
+    const tick = (ts) => {
+      if (!running) return;
+      if (!startTime) startTime = ts;
+      const t = ts - startTime;          // ms since mount
 
-    // Create mesh
-    const particlesMesh = new THREE.Points(
-      particlesGeometry,
-      particlesMaterial
-    );
-    scene.add(particlesMesh);
+      const w = canvas.width;
+      const h = canvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
 
-    // Position camera
-    camera.position.z = 2;
+      ctx.clearRect(0, 0, w, h);
 
-    // Animation function
-    const animate = () => {
-      requestAnimationFrame(animate);
+      // ── Phase 0: Pitch black (0–380ms) ───────────────────
+      if (t < 380) {
+        /* nothing — pure black */
 
-      particlesMesh.rotation.x += 0.0005;
-      particlesMesh.rotation.y += 0.0005;
+      // ── Phase 1: Singularity (380–630ms) ─────────────────
+      } else if (t < 630) {
+        const p = (t - 380) / 250;
+        const glowR = p * 70;
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+        g.addColorStop(0,   `rgba(255,255,255,${p})`);
+        g.addColorStop(0.5, `rgba(180,210,255,${p * 0.4})`);
+        g.addColorStop(1,   'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+        ctx.fill();
+        // Tiny bright core
+        ctx.fillStyle = `rgba(255,255,255,${Math.min(1, p * 2)})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, Math.max(0.1, p * 6), 0, Math.PI * 2);
+        ctx.fill();
 
-      renderer.render(scene, camera);
+      // ── Phase 2: Rapid white expansion (630–800ms) ───────
+      } else if (t < 800) {
+        const p = (t - 630) / 170;
+        const r = 6 + p * 90;
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 2.5);
+        g.addColorStop(0,   'rgba(255,255,255,1)');
+        g.addColorStop(0.3, `rgba(210,235,255,${1 - p * 0.3})`);
+        g.addColorStop(0.8, `rgba(100,160,255,${(1 - p) * 0.5})`);
+        g.addColorStop(1,   'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+      // ── Phase 3+: BURST + particles in flight ────────────
+      } else {
+        if (!burstFired) {
+          burstFired = true;
+          // Fast small streaks
+          for (let i = 0; i < 220; i++) particles.push(new Particle(cx, cy, true));
+          // Slow large glowing blobs
+          for (let i = 0; i < 55; i++) particles.push(new Particle(cx, cy, false));
+        }
+
+        // White flash fades 800→1150ms
+        const flash = Math.max(0, 1 - (t - 800) / 350);
+        if (flash > 0) {
+          const maxR = Math.hypot(cx, cy) * 1.6;
+          const gf = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+          gf.addColorStop(0,   `rgba(255,255,255,${flash})`);
+          gf.addColorStop(0.4, `rgba(180,210,255,${flash * 0.6})`);
+          gf.addColorStop(1,   'rgba(0,0,0,0)');
+          ctx.fillStyle = gf;
+          ctx.fillRect(0, 0, w, h);
+        }
+
+        // Particles
+        particles = particles.filter(p => !p.isDead());
+        for (const p of particles) { p.update(); p.draw(ctx); }
+      }
+
+      animId = requestAnimationFrame(tick);
     };
 
-    // Handle window resize
-    const handleResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    };
+    animId = requestAnimationFrame(tick);
 
-    window.addEventListener("resize", handleResize);
+    // Stop the loop 800ms after the curtain finishes fading
+    // (JS fires is-ready at 1000ms, curtain fades over 700ms → done at 1700ms)
+    const stopTimer = setTimeout(() => { running = false; }, 2200);
 
-    // Start animation
-    animate();
-
-    // Cleanup function
     return () => {
-      window.removeEventListener("resize", handleResize);
-      mountRef.current.removeChild(renderer.domElement);
+      running = false;
+      cancelAnimationFrame(animId);
+      clearTimeout(stopTimer);
+      window.removeEventListener('resize', resize);
     };
   }, []);
 
   return (
-    <div
-      ref={mountRef}
-      className="fixed top-0 left-0 w-full h-full z-0 pointer-events-none"
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
     />
   );
-};
+}
 
 export default function Portfolio() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [introPhase, setIntroPhase] = useState("orb");
+  const [introPhase, setIntroPhase] = useState("loading");
   const scrollYRef = useRef(0);
   const lenisRef = useRef(null);
   const sections = {
@@ -263,27 +377,21 @@ export default function Portfolio() {
     contact: useRef(null),
   };
 
+  const isLoading = introPhase !== "ready";
+
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
     if (prefersReducedMotion) {
-      setIsLoading(false);
       setIntroPhase("ready");
       return undefined;
     }
 
-    const revealTimer = window.setTimeout(() => setIntroPhase("reveal"), 1500);
-    const loadingTimer = window.setTimeout(() => {
-      setIntroPhase("ready");
-      setIsLoading(false);
-    }, 3300);
+    const timer = window.setTimeout(() => setIntroPhase("ready"), 1000);
 
-    return () => {
-      window.clearTimeout(revealTimer);
-      window.clearTimeout(loadingTimer);
-    };
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -366,53 +474,12 @@ export default function Portfolio() {
     target.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  function Rig() {
-    return useFrame((state) => {
-      state.camera.position.x = THREE.MathUtils.lerp(
-        state.camera.position.x,
-        1.5 + state.mouse.x / 4,
-        0.075
-      );
-      state.camera.position.y = THREE.MathUtils.lerp(
-        state.camera.position.y,
-        1.5 + state.mouse.y / 4,
-        0.075
-      );
-    });
-  }
-
   return (
-    <div className={`page-shell ${isLoading ? "is-loading" : "is-ready"} intro-${introPhase} bg-black text-white min-h-screen flex flex-col relative`}>
-      <div
-        className={`site-loader ${isLoading ? "is-loading" : "is-loaded"}`}
-        aria-hidden={!isLoading}
-      >
-        <div className="site-loader__burst" aria-hidden="true">
-          <div className="site-loader__particles">
-            {Array.from({ length: 72 }, (_, index) => {
-              const angle = index * 2.399;
-              const distance = 16 + ((index * 17) % 68);
-              const x = 50 + Math.cos(angle) * distance;
-              const y = 50 + Math.sin(angle) * distance * 0.62;
-              const size = 1 + ((index * 7) % 5);
-              const color = index % 3 === 0 ? "#ef6b6b" : index % 3 === 1 ? "#4a9eff" : "#9b7bff";
-
-              return (
-                <i
-                  key={index}
-                  style={{
-                    "--particle-x": `${x}%`,
-                    "--particle-y": `${y}%`,
-                    "--particle-size": `${size}px`,
-                    "--particle-color": color,
-                    "--particle-index": index,
-                  }}
-                />
-              );
-            })}
-          </div>
-        </div>
+    <div className={`page-shell ${isLoading ? "is-loading" : "is-ready"} bg-black text-white min-h-screen flex flex-col relative`}>
+      <div className="page-curtain" aria-hidden="true">
+        <BigBangCanvas />
       </div>
+
 
       {/* Three.js Parallax Background */}
       <div className="background-canvas fixed top-0 left-0 z-0 h-full w-full">
@@ -493,7 +560,7 @@ export default function Portfolio() {
 
         {/* Hero Section */}
         <section
-          className="hero-section motion-section relative container mx-auto flex min-h-[calc(100svh-64px)] flex-col items-center justify-center overflow-hidden px-4 py-12 text-center sm:min-h-[calc(100svh-80px)] sm:py-16"
+          className="hero-section motion-section relative container mx-auto flex min-h-[calc(100svh-64px)] flex-col items-center justify-center px-4 py-12 text-center sm:min-h-[calc(100svh-80px)] sm:py-16"
           ref={sections.about}
         >
           <div className="hero-aura hero-aura--blue" />
@@ -502,7 +569,7 @@ export default function Portfolio() {
             <p className="mb-5 text-xs font-semibold uppercase tracking-[0.3em] text-gray-400 sm:text-sm">
               Full Stack Software Engineer / IT Specialist
             </p>
-            <h1 className="hero-title hero-title--shared text-5xl font-bold sm:text-7xl lg:text-8xl">
+            <h1 className="hero-title hero-title--shared font-bold">
               {heroWords.map((word, index) => (
                 <span
                   key={word.text}
@@ -513,7 +580,7 @@ export default function Portfolio() {
               ))}
             </h1>
             <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-gray-300 sm:text-xl">
-              Design • Full Stack Development • AI Integration
+              Design • Full Stack Development • Technology Strategy
             </p>
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
               <Button
@@ -541,9 +608,6 @@ export default function Portfolio() {
           </button>
         </section>
 
-        {/* <section className="relative w-full h-[500px] overflow-y-scroll">
-          <Scene />
-        </section> */}
         {/* Experiences Section */}
         <section
           className="motion-section container mx-auto px-4 py-10 sm:py-12"

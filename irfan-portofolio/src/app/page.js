@@ -1,8 +1,5 @@
-import Image from "next/image";
-import Portfolio from "./home/page";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-   <Portfolio></Portfolio>
-  );
+  redirect("/home");
 }
