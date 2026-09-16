@@ -206,7 +206,7 @@
 
 
   /* ── Loading: keep content hidden behind the curtain ─── */
-  .page-shell.is-loading .motion-header {
+  .page-shell.is-loading .main-header {
     opacity: 0;
     transform: translateY(-2rem);
   }
@@ -228,7 +228,7 @@
   .page-shell.is-ready .hero-word--3 { animation-delay: 410ms; }
 
   /* ── Beat 2: nav slides down after words settle ────────── */
-  .page-shell.is-ready .motion-header {
+  .page-shell.is-ready .main-header {
     animation: header-reveal 600ms cubic-bezier(0.22, 1, 0.36, 1) 1100ms both;
   }
 
@@ -237,13 +237,8 @@
     animation: hero-content-enter 600ms ease 1500ms both;
   }
 
-  /* ── Three.js background canvas — fades in with the words ── */
+  /* ── Three.js background canvas ── */
   .background-canvas {
-    opacity: 0;
-    transition: opacity 900ms ease 50ms;
-  }
-
-  .page-shell.is-ready .background-canvas {
     opacity: 1;
   }
 
@@ -343,7 +338,7 @@
   @media (prefers-reduced-motion: reduce) {
     .page-curtain { display: none; }
 
-    .page-shell.is-loading .motion-header,
+    .page-shell.is-loading .main-header,
     .page-shell.is-loading .hero-content {
       opacity: 1;
       transform: none;

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
@@ -47,8 +47,15 @@ import {
 } from "react-icons/si";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { useGLTF, OrbitControls, Environment, Stage } from "@react-three/drei";
 import Lenis from "lenis";
 import { projects } from "@/lib/projects";
+
+function Irfan3DModel() {
+  const { scene } = useGLTF("/3Dmodel/irfan3d.glb");
+  return <primitive object={scene} />;
+}
+useGLTF.preload("/3Dmodel/irfan3d.glb");
 
 const heroWords = [
   { text: "Irfan", className: "hero-word--blue" },
@@ -162,196 +169,264 @@ function ParallaxLayers({ scrollYRef }) {
 }
 
 
-// ─── Big-Bang canvas ──────────────────────────────────────────────────────────
-// All rendering is imperative (rAF loop) — not React renders — for smooth 60fps.
-const PARTICLE_COLORS = [
-  '#4a9eff', '#7b6fff', '#ef6b6b', '#c4b5fd',
-  '#ffffff', '#38d9f5', '#a78bfa', '#ff8fa3', '#60efff',
-];
-
+// ─── Big-Bang Three.js canvas ─────────────────────────────────────────────────
+// Uses WebGL + bloom post-processing — 20,000 particles from a singularity point.
+// Postprocessing modules are async-imported so they don't bloat the initial bundle.
 function BigBangCanvas() {
   const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    // Skip animation for reduced-motion preference
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    const ctx = canvas.getContext('2d');
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    // ── Particle class ────────────────────────────────────────
-    class Particle {
-      constructor(x, y, fast = true) {
-        this.x = x;
-        this.y = y;
-        const angle = Math.random() * Math.PI * 2;
-        const speed = fast
-          ? Math.random() * 10 + 2
-          : Math.random() * 2.5 + 0.4;
-        this.vx = Math.cos(angle) * speed;
-        this.vy = Math.sin(angle) * speed;
-        this.size = fast
-          ? Math.random() * 2 + 0.4
-          : Math.random() * 5 + 2;
-        this.origSize = this.size;
-        this.color = PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)];
-        this.life = 1;
-        this.decay = fast
-          ? Math.random() * 0.007 + 0.003
-          : Math.random() * 0.003 + 0.001;
-        this.trail = [];
-        this.maxTrail = fast
-          ? Math.floor(Math.random() * 12) + 6
-          : Math.floor(Math.random() * 5) + 2;
-      }
-
-      update() {
-        this.trail.push({ x: this.x, y: this.y });
-        if (this.trail.length > this.maxTrail) this.trail.shift();
-        this.x += this.vx;
-        this.y += this.vy;
-        this.vy += 0.018;   // gentle gravity
-        this.vx *= 0.994;
-        this.vy *= 0.994;
-        this.life -= this.decay;
-        this.size = this.origSize * Math.max(0, this.life);
-      }
-
-      draw(c) {
-        if (this.life <= 0 || this.size < 0.05) return;
-        c.save();
-        // Trail
-        for (let i = 0; i < this.trail.length; i++) {
-          const ratio = i / this.trail.length;
-          c.globalAlpha = ratio * this.life * 0.35;
-          c.beginPath();
-          c.arc(this.trail[i].x, this.trail[i].y, Math.max(0.05, this.size * ratio * 0.7), 0, Math.PI * 2);
-          c.fillStyle = this.color;
-          c.fill();
-        }
-        // Glow halo
-        c.globalAlpha = this.life * 0.2;
-        c.beginPath();
-        c.arc(this.x, this.y, this.size * 5, 0, Math.PI * 2);
-        c.fillStyle = this.color;
-        c.fill();
-        // Core dot
-        c.globalAlpha = Math.min(1, this.life * 1.2);
-        c.beginPath();
-        c.arc(this.x, this.y, Math.max(0.05, this.size), 0, Math.PI * 2);
-        c.fillStyle = this.color;
-        c.fill();
-        c.restore();
-      }
-
-      isDead() { return this.life <= 0; }
-    }
-
-    // ── Animation loop ────────────────────────────────────────
-    let startTime = null;
-    let particles = [];
-    let burstFired = false;
     let running = true;
-    let animId;
+    let animId = null;
+    let disposeAll = null;
 
-    const tick = (ts) => {
-      if (!running) return;
-      if (!startTime) startTime = ts;
-      const t = ts - startTime;          // ms since mount
+    const init = async () => {
+      // Dynamic imports — keeps Three.js postprocessing out of the main chunk
+      const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }] =
+        await Promise.all([
+          import('three/examples/jsm/postprocessing/EffectComposer.js'),
+          import('three/examples/jsm/postprocessing/RenderPass.js'),
+          import('three/examples/jsm/postprocessing/UnrealBloomPass.js'),
+        ]);
+      if (!running) return; // component unmounted during async import
 
-      const w = canvas.width;
-      const h = canvas.height;
-      const cx = w / 2;
-      const cy = h / 2;
+      const W = window.innerWidth;
+      const H = window.innerHeight;
 
-      ctx.clearRect(0, 0, w, h);
+      // ── Scene setup ───────────────────────────────────────
+      const scene = new THREE.Scene();
 
-      // ── Phase 0: Pitch black (0–380ms) ───────────────────
-      if (t < 380) {
-        /* nothing — pure black */
+      const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 10000);
+      camera.position.set(0, 0, 200);
 
-      // ── Phase 1: Singularity (380–630ms) ─────────────────
-      } else if (t < 630) {
-        const p = (t - 380) / 250;
-        const glowR = p * 70;
-        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
-        g.addColorStop(0,   `rgba(255,255,255,${p})`);
-        g.addColorStop(0.5, `rgba(180,210,255,${p * 0.4})`);
-        g.addColorStop(1,   'rgba(0,0,0,0)');
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
-        ctx.fill();
-        // Tiny bright core
-        ctx.fillStyle = `rgba(255,255,255,${Math.min(1, p * 2)})`;
-        ctx.beginPath();
-        ctx.arc(cx, cy, Math.max(0.1, p * 6), 0, Math.PI * 2);
-        ctx.fill();
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setSize(W, H);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-      // ── Phase 2: Rapid white expansion (630–800ms) ───────
-      } else if (t < 800) {
-        const p = (t - 630) / 170;
-        const r = 6 + p * 90;
-        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 2.5);
-        g.addColorStop(0,   'rgba(255,255,255,1)');
-        g.addColorStop(0.3, `rgba(210,235,255,${1 - p * 0.3})`);
-        g.addColorStop(0.8, `rgba(100,160,255,${(1 - p) * 0.5})`);
-        g.addColorStop(1,   'rgba(0,0,0,0)');
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r * 2.5, 0, Math.PI * 2);
-        ctx.fill();
+      // Lights
+      scene.add(new THREE.AmbientLight(0x404040, 1.5));
+      const pLight = new THREE.PointLight(0xffffff, 2, 1000);
+      pLight.position.set(0, 0, 0);
+      scene.add(pLight);
 
-      // ── Phase 3+: BURST + particles in flight ────────────
-      } else {
-        if (!burstFired) {
-          burstFired = true;
-          // Fast small streaks
-          for (let i = 0; i < 220; i++) particles.push(new Particle(cx, cy, true));
-          // Slow large glowing blobs
-          for (let i = 0; i < 55; i++) particles.push(new Particle(cx, cy, false));
-        }
+      // ── Bloom post-processing ────────────────────────────
+      const composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+      const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 2, 0.5, 0);
+      composer.addPass(bloom);
 
-        // White flash fades 800→1150ms
-        const flash = Math.max(0, 1 - (t - 800) / 350);
-        if (flash > 0) {
-          const maxR = Math.hypot(cx, cy) * 1.6;
-          const gf = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
-          gf.addColorStop(0,   `rgba(255,255,255,${flash})`);
-          gf.addColorStop(0.4, `rgba(180,210,255,${flash * 0.6})`);
-          gf.addColorStop(1,   'rgba(0,0,0,0)');
-          ctx.fillStyle = gf;
-          ctx.fillRect(0, 0, w, h);
-        }
+      // ── 20,000-particle system ────────────────────────────
+      // All start at the singularity (origin) with random outward velocities.
+      const COUNT = 20000;
+      const posArr = new Float32Array(COUNT * 3); // all zeros → at origin
+      const velArr = new Float32Array(COUNT * 3);
+      const colArr = new Float32Array(COUNT * 3);
 
-        // Particles
-        particles = particles.filter(p => !p.isDead());
-        for (const p of particles) { p.update(); p.draw(ctx); }
+      // Particle color palette (rgb 0–1 range)
+      const PALETTE = [
+        [1.0, 1.0, 1.0],     // white
+        [0.29, 0.61, 1.0],   // blue
+        [0.48, 0.42, 0.98],  // purple
+        [0.94, 0.42, 0.42],  // red
+        [0.22, 0.85, 0.96],  // cyan
+        [0.77, 0.71, 0.99],  // lavender
+        [1.0, 0.56, 0.64],   // pink
+      ];
+
+      for (let i = 0; i < COUNT; i++) {
+        // Uniform-sphere velocity distribution
+        const theta = Math.random() * 2 * Math.PI;
+        const phi   = Math.acos(Math.random() * 2 - 1);
+        const speed = Math.random() * 0.5 + 0.5; // 0.5–1.0
+        velArr[i * 3]     = speed * Math.sin(phi) * Math.cos(theta);
+        velArr[i * 3 + 1] = speed * Math.sin(phi) * Math.sin(theta);
+        velArr[i * 3 + 2] = speed * Math.cos(phi);
+        // Assign color
+        const c = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+        colArr[i * 3] = c[0]; colArr[i * 3 + 1] = c[1]; colArr[i * 3 + 2] = c[2];
       }
 
-      animId = requestAnimationFrame(tick);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+      geo.setAttribute('color',    new THREE.BufferAttribute(colArr, 3));
+
+      // Soft radial-gradient sprite for each particle
+      const sc = document.createElement('canvas');
+      sc.width = sc.height = 64;
+      const sCtx = sc.getContext('2d');
+      const sg = sCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      sg.addColorStop(0,   'rgba(255,255,255,1)');
+      sg.addColorStop(0.2, 'rgba(200,210,255,0.8)');
+      sg.addColorStop(0.5, 'rgba(100,140,255,0.4)');
+      sg.addColorStop(1,   'rgba(0,0,0,0)');
+      sCtx.fillStyle = sg;
+      sCtx.fillRect(0, 0, 64, 64);
+
+      const mat = new THREE.PointsMaterial({
+        size: 2,
+        map: new THREE.CanvasTexture(sc),
+        blending: THREE.AdditiveBlending,
+        depthTest: false,
+        transparent: true,
+        opacity: 0,
+        vertexColors: true,
+      });
+
+      const pts = new THREE.Points(geo, mat);
+      scene.add(pts);
+
+      // ── Galaxy cluster ────────────────────────────────────
+      // Appears at 0.7 s — simulates structure forming after the bang.
+      let galaxyPts = null;
+      const createGalaxy = () => {
+        const GC = 3000;
+        const gPos = new Float32Array(GC * 3);
+        for (let i = 0; i < GC; i++) {
+          gPos[i * 3]     = (Math.random() - 0.5) * 500;
+          gPos[i * 3 + 1] = (Math.random() - 0.5) * 500;
+          gPos[i * 3 + 2] = (Math.random() - 0.5) * 500;
+        }
+        const gGeo = new THREE.BufferGeometry();
+        gGeo.setAttribute('position', new THREE.BufferAttribute(gPos, 3));
+        galaxyPts = new THREE.Points(gGeo, new THREE.PointsMaterial({
+          size: 1.2,
+          color: 0xaaaadd,
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+          opacity: 0,
+          depthTest: false,
+        }));
+        scene.add(galaxyPts);
+      };
+
+      // ── Nebula ────────────────────────────────────────────
+      // Appears at 1.0 s — the glowing gas cloud surrounding the explosion.
+      let nebulaMesh = null;
+      const createNebula = () => {
+        const nc = document.createElement('canvas');
+        nc.width = nc.height = 512;
+        const nCtx = nc.getContext('2d');
+        const ng = nCtx.createRadialGradient(256, 256, 64, 256, 256, 256);
+        ng.addColorStop(0,   'rgba(50, 0, 100, 0.8)');
+        ng.addColorStop(0.5, 'rgba(10, 0,  50, 0.3)');
+        ng.addColorStop(1,   'rgba(0,  0,   0, 0.0)');
+        nCtx.fillStyle = ng;
+        nCtx.fillRect(0, 0, 512, 512);
+        // Random noise stars
+        for (let i = 0; i < 1000; i++) {
+          nCtx.fillStyle = `rgba(255,255,255,${(Math.random() * 0.08).toFixed(3)})`;
+          nCtx.fillRect(Math.random() * 512, Math.random() * 512, 1, 1);
+        }
+        nebulaMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(450, 32, 32),
+          new THREE.MeshBasicMaterial({
+            map: new THREE.CanvasTexture(nc),
+            side: THREE.BackSide,
+            transparent: true,
+            opacity: 0,
+          })
+        );
+        scene.add(nebulaMesh);
+      };
+
+      // ── Resize handler ───────────────────────────────────
+      const onResize = () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(window.innerWidth, window.innerHeight);
+      };
+      window.addEventListener('resize', onResize);
+
+      // ── Main animation loop ──────────────────────────────
+      const clock = new THREE.Clock();
+      const INITIAL_SPEED = 200; // units/second — starts fast
+      const BURST_AT = 1.0;      // seconds until particles start flying
+      // To create the seamless starry background, particles decelerate exponentially!
+
+      const tick = () => {
+        if (!running) return;
+        animId = requestAnimationFrame(tick);
+
+        const delta   = clock.getDelta();
+        const elapsed = clock.elapsedTime;
+
+        // — Singularity (0 → BURST_AT) —
+        if (elapsed < BURST_AT) {
+          mat.opacity = Math.min(0.85, (elapsed / BURST_AT) * 0.85);
+
+        // — Explosion and Star Formation (BURST_AT → ∞) —
+        } else {
+          mat.opacity = 0.85;
+          const timeSinceBurst = elapsed - BURST_AT;
+          // Exponential decay for speed so they slow down and stop like stars
+          const currentSpeed = INITIAL_SPEED * Math.exp(-timeSinceBurst * 1.5);
+          
+          if (currentSpeed > 0.1) {
+            const p = geo.attributes.position.array;
+            for (let i = 0; i < COUNT; i++) {
+              const idx = i * 3;
+              p[idx]     += velArr[idx]     * currentSpeed * delta;
+              p[idx + 1] += velArr[idx + 1] * currentSpeed * delta;
+              p[idx + 2] += velArr[idx + 2] * currentSpeed * delta;
+            }
+            geo.attributes.position.needsUpdate = true;
+          }
+        }
+
+        // Galaxy cluster fades in
+        if (elapsed > 1.8 && !galaxyPts) createGalaxy();
+        if (galaxyPts) {
+          galaxyPts.material.opacity = Math.min(0.45, (elapsed - 1.8) * 0.9);
+          galaxyPts.rotation.y += delta * 0.012;
+        }
+
+        // Nebula fades in
+        if (elapsed > 2.2 && !nebulaMesh) createNebula();
+        if (nebulaMesh) {
+          nebulaMesh.material.opacity = Math.min(0.6, (elapsed - 2.2) * 0.9);
+        }
+
+        // Subtle cinematic camera drift + Parallax from scrolling down
+        const scrollY = window.scrollY || 0;
+        
+        // --- SEAMLESS FLY-IN TRANSITION (Like Anton Manaev) ---
+        // Camera starts far back (Z=800) and smoothly flies deep into the particle field (Z=50)
+        const targetZ = 50;
+        const startZ = 800;
+        const flyProgress = Math.min(1, elapsed / 3.5);
+        const easeOutQuart = 1 - Math.pow(1 - flyProgress, 4);
+        camera.position.z = startZ - (startZ - targetZ) * easeOutQuart;
+
+        camera.position.x = Math.sin(elapsed * 0.25) * 5;
+        // Scroll moves the camera Y, making background stars go up
+        camera.position.y = Math.cos(elapsed * 0.18) * 3 - (scrollY * 0.05); 
+        camera.lookAt(0, -scrollY * 0.05, 0);
+
+        composer.render(delta);
+      };
+
+      tick();
+
+      // Register cleanup for when running flag is set to false
+      disposeAll = () => {
+        cancelAnimationFrame(animId);
+        window.removeEventListener('resize', onResize);
+        geo.dispose();
+        mat.dispose();
+        renderer.dispose();
+      };
     };
 
-    animId = requestAnimationFrame(tick);
-
-    // Stop the loop 800ms after the curtain finishes fading
-    // (JS fires is-ready at 1000ms, curtain fades over 700ms → done at 1700ms)
-    const stopTimer = setTimeout(() => { running = false; }, 2200);
+    init().catch(console.error);
 
     return () => {
       running = false;
-      cancelAnimationFrame(animId);
-      clearTimeout(stopTimer);
-      window.removeEventListener('resize', resize);
+      if (disposeAll) disposeAll();
     };
   }, []);
 
@@ -366,9 +441,12 @@ function BigBangCanvas() {
 
 export default function Portfolio() {
   const [introPhase, setIntroPhase] = useState("loading");
+  const [isNavVisible, setIsNavVisible] = useState(true);
+  const lastScrollY = useRef(0);
   const scrollYRef = useRef(0);
   const lenisRef = useRef(null);
   const sections = {
+    hero: useRef(null),
     about: useRef(null),
     experiences: useRef(null),
     education: useRef(null),
@@ -389,7 +467,7 @@ export default function Portfolio() {
       return undefined;
     }
 
-    const timer = window.setTimeout(() => setIntroPhase("ready"), 1000);
+    const timer = window.setTimeout(() => setIntroPhase("ready"), 3500);
 
     return () => window.clearTimeout(timer);
   }, []);
@@ -410,20 +488,22 @@ export default function Portfolio() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.classList.add("is-visible");
-            observer.unobserve(entry.target);
+            if (entry.target.hasAttribute("data-stagger")) {
+              const children = entry.target.children;
+              Array.from(children).forEach((child, index) => {
+                child.style.transitionDelay = `${index * 100}ms`;
+                child.classList.add("is-visible");
+              });
+            }
           }
         });
       },
-      { threshold: 0.12, rootMargin: "0px 0px -8%" }
+      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
     );
 
-    animatedElements.forEach((element) => observer.observe(element));
-
-    return () => {
-      observer.disconnect();
-      document.documentElement.classList.remove("motion-ready");
-    };
-  }, []);
+    animatedElements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [introPhase]);
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia(
@@ -456,9 +536,19 @@ export default function Portfolio() {
 
   useEffect(() => {
     const handleScroll = () => {
-      scrollYRef.current = window.scrollY;
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY > lastScrollY.current && currentScrollY > 60) {
+        setIsNavVisible(false); // Scrolling down
+      } else {
+        setIsNavVisible(true);  // Scrolling up
+      }
+      
+      lastScrollY.current = currentScrollY;
+      scrollYRef.current = currentScrollY;
     };
-    window.addEventListener("scroll", handleScroll);
+    
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -497,12 +587,16 @@ export default function Portfolio() {
       {/* Content with z-index to appear above the 3D background */}
       <div className="page-content relative z-10">
         {/* Header */}
-        <header className="motion-header container mx-auto px-4 py-4 sm:py-6">
-          <nav className="flex items-center justify-between gap-6 overflow-x-auto">
+        <header 
+          className={`main-header sticky top-4 z-50 mx-auto w-full max-w-6xl px-4 py-2 sm:py-4 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            isNavVisible ? "translate-y-0 opacity-100" : "-translate-y-[150%] opacity-0"
+          }`}
+        >
+          <nav className="flex items-center justify-between gap-6 overflow-x-auto rounded-full border border-white/10 bg-white/5 px-6 py-4 shadow-lg backdrop-blur-md">
             <button
               type="button"
               className="shrink-0 text-left"
-              onClick={() => scrollTo("about")}
+              onClick={() => scrollTo("hero")}
             >
               <span className="block text-xl font-semibold tracking-[0.08em] text-white">
                 IRFAN<span className="text-blue-500">R</span>
@@ -561,7 +655,7 @@ export default function Portfolio() {
         {/* Hero Section */}
         <section
           className="hero-section motion-section relative container mx-auto flex min-h-[calc(100svh-64px)] flex-col items-center justify-center px-4 py-12 text-center sm:min-h-[calc(100svh-80px)] sm:py-16"
-          ref={sections.about}
+          ref={sections.hero}
         >
           <div className="hero-aura hero-aura--blue" />
           <div className="hero-aura hero-aura--red" />
@@ -582,30 +676,62 @@ export default function Portfolio() {
             <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-gray-300 sm:text-xl">
               Design • Full Stack Development • Technology Strategy
             </p>
-            <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
-              <Button
-                className="hero-button hero-button--primary w-full rounded-full px-7 py-6 text-base sm:w-auto"
-                onClick={() => scrollTo("projects")}
-              >
-                Initiate System <ExternalLink size={16} />
-              </Button>
+            <div className="mt-9 flex justify-center gap-4">
               <Button
                 variant="outline"
-                className="hero-button w-full rounded-full px-7 py-6 text-base sm:w-auto"
+                className="hero-button w-full rounded-full border-white/20 bg-white/5 px-8 py-6 text-base backdrop-blur-md hover:bg-white/10 sm:w-auto"
                 onClick={() => scrollTo("contact")}
               >
-                View Portfolio
+                Contact Me
               </Button>
             </div>
           </div>
           <button
             type="button"
             className="hero-scroll-cue absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-gray-500"
-            onClick={() => scrollTo("experiences")}
-            aria-label="Scroll to experience"
+            onClick={() => scrollTo("about")}
+            aria-label="Scroll to about"
           >
             <span className="block text-2xl">↓</span>
           </button>
+        </section>
+
+        {/* About Section */}
+        <section
+          className="motion-section relative container mx-auto px-4 py-20 sm:py-32"
+          ref={sections.about}
+        >
+          <div className="mx-auto max-w-6xl grid grid-cols-1 gap-12 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-md md:grid-cols-2 md:items-center sm:p-14">
+            <div className="text-left text-center md:text-left">
+              <h2 className="mb-6 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                About Me
+              </h2>
+              <div className="mx-auto h-1 w-20 rounded bg-blue-500/50 mb-8 md:mx-0" />
+              <p className="text-lg leading-relaxed text-gray-300">
+                I am a passionate Full Stack Software Engineer and IT Specialist with a strong foundation in building scalable, efficient, and user-centric applications. With expertise spanning modern web technologies, system architecture, and UI/UX design, I thrive at the intersection of creativity and logic. I am dedicated to continuously exploring emerging tech and delivering solutions that are not just functional, but exceptional.
+              </p>
+            </div>
+            
+            <div className="h-[400px] w-full lg:h-[500px]">
+              <Suspense fallback={<div className="flex h-full w-full items-center justify-center text-gray-400">Loading 3D Model...</div>}>
+                <Canvas shadows camera={{ position: [0, 0, 5], fov: 45 }}>
+                  <Suspense fallback={null}>
+                    <Stage environment="apartment" intensity={1.5} adjustCamera>
+                      <Irfan3DModel />
+                    </Stage>
+                  </Suspense>
+                  <OrbitControls 
+                    enableZoom={false} 
+                    enablePan={false} 
+                    minPolarAngle={Math.PI / 2} 
+                    maxPolarAngle={Math.PI / 2} 
+                    autoRotate
+                    autoRotateSpeed={1.5}
+                  />
+                </Canvas>
+              </Suspense>
+            </div>
+          </div>
         </section>
 
         {/* Experiences Section */}
@@ -661,7 +787,7 @@ export default function Portfolio() {
                 ],
               },
             ].map((experience) => (
-              <Card key={`${experience.company}-${experience.role}`} className="border-gray-800 bg-gray-900">
+              <Card key={`${experience.company}-${experience.role}`} className="border-white/10 bg-white/5 backdrop-blur-md shadow-xl">
                 <CardContent className="p-6">
                   <div className="grid gap-4 md:grid-cols-5">
                     <div className="md:col-span-1">
@@ -718,7 +844,7 @@ export default function Portfolio() {
               return (
               <Card
                 key={`${education.degree}-${education.institution}`}
-                className="bg-gray-900 border-gray-800"
+                className="border-white/10 bg-white/5 backdrop-blur-md shadow-xl"
               >
                 <CardContent className="p-6">
                   <div className="grid gap-4 md:grid-cols-[4rem_1fr_8rem] md:items-center">
@@ -759,7 +885,7 @@ export default function Portfolio() {
           <h2 className="mb-8 text-3xl font-bold">Independent and Academic Projects</h2>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {projects.map((project) => (
-              <Card key={project.slug} className="border-gray-800 bg-gray-900">
+              <Card key={project.slug} className="border-white/10 bg-white/5 backdrop-blur-md shadow-xl">
                 <Link href={`/projects/${project.slug}`} className="block h-full">
                   <CardContent className="flex h-full flex-col p-6">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
@@ -794,7 +920,7 @@ export default function Portfolio() {
               useful products.
             </p>
           </div>
-          <div className="overflow-hidden rounded-xl border border-gray-800 bg-gray-950">
+          <div className="overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md shadow-2xl">
             {[
               ["01", "Frontend", Braces, [["React.js", SiReact], ["React Native", SiReact], ["Angular", SiAngular], ["Next.js", SiNextdotjs]]],
               ["02", "Backend", Wrench, [["Node.js", SiNodedotjs], ["Java", Code2], ["Spring Boot", SiSpringboot], ["REST APIs", Network], ["Microservices", Blocks]]],
@@ -805,9 +931,9 @@ export default function Portfolio() {
             ].map(([number, category, Icon, skills]) => (
               <div
                 key={category}
-                className="group grid gap-5 border-b border-gray-800 p-5 last:border-b-0 sm:grid-cols-[7rem_10rem_1fr] sm:items-center sm:p-6"
+                className="group grid gap-5 border-b border-white/10 p-5 last:border-b-0 sm:grid-cols-[7rem_10rem_1fr] sm:items-center sm:p-6"
               >
-                <span className="text-sm font-semibold text-gray-600">{number}</span>
+                <span className="text-sm font-semibold text-gray-500">{number}</span>
                 <div className="flex items-center gap-3 text-gray-300">
                   <Icon size={18} className="text-blue-400 transition-transform duration-300 group-hover:rotate-6" />
                   <h3 className="font-semibold">{category}</h3>
@@ -816,7 +942,7 @@ export default function Portfolio() {
                   {skills.map(([skill, SkillIcon]) => (
                     <span
                       key={skill}
-                      className="group/skill inline-flex items-center gap-2 rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-400 transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-500/60 hover:bg-blue-500/10 hover:text-blue-200"
+                      className="group/skill inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 backdrop-blur-sm px-3 py-2 text-sm text-gray-400 transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-500/60 hover:bg-blue-500/20 hover:text-blue-200 shadow-md"
                     >
                       <SkillIcon className="text-base text-gray-500 transition-colors group-hover/skill:text-blue-300" aria-hidden="true" />
                       {skill}
@@ -841,7 +967,7 @@ export default function Portfolio() {
                 ["React Native, React JS, and Golang", "Enigma Camp (Apr - Jun 2023)", Code2],
                 ["Intensive German Language Course A1 and A2", "Mercator Science & Education (2018 - 2019)", Globe2],
               ].map(([name, issuer, Icon]) => (
-                <Card key={name} className="border-gray-800 bg-gray-900">
+                <Card key={name} className="border-white/10 bg-white/5 backdrop-blur-md shadow-xl">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-4">
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-300">
@@ -868,7 +994,7 @@ export default function Portfolio() {
                 ["Liaison Officer", "Labsproject - Coordinated communication between two organizations (2015)"],
                 ["Chief Operational Officer", "Vashka Company - Managed operational activities (2014)"],
               ].map(([role, detail]) => (
-                <Card key={`${role}-${detail}`} className="border-gray-800 bg-gray-900">
+                <Card key={`${role}-${detail}`} className="border-white/10 bg-white/5 backdrop-blur-md shadow-xl">
                   <CardContent className="p-4">
                     <h3 className="font-semibold">{role}</h3>
                     <p className="text-sm text-gray-400">{detail}</p>
@@ -902,7 +1028,7 @@ export default function Portfolio() {
         </section>
 
         {/* Footer */}
-        <footer className="container mx-auto py-6 px-4 mt-auto border-t border-gray-800">
+        <footer className="container mx-auto py-6 px-4 mt-auto border-t border-white/10">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400">
               &copy; 2025 Irfan Rahmanindra. All rights reserved.
