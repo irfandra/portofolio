@@ -13,6 +13,7 @@ export const projects = [
       "Planned the mobile scanning experience for fast customer validation.",
     ],
     technologies: ["Solidity", "Hardhat", "Polygon", "Smart Contracts", "React Native", "REST APIs"],
+    video: "/assets/projects/zeal/authChek.webm",
     snippet: `const verifyProduct = async (tokenId) => {
   const product = await contract.products(tokenId);
 
@@ -92,6 +93,22 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 model.fit(X_train, y_train)
 print(classification_report(y_test, model.predict(X_test)))`,
+  },
+  {
+    slug: "portfolio-v1",
+    name: "Portfolio V1",
+    type: "Personal / Frontend",
+    description: "Previous iteration of my personal portfolio built with pure HTML, CSS, and Vanilla JavaScript with simple scroll animations.",
+    overview: "A lightweight, no-framework personal website.",
+    contributions: ["Designed the layout", "Implemented vanilla JS scroll observers"],
+    technologies: ["HTML", "CSS", "JavaScript"],
+    snippet: `const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('fade-in');
+    }
+  });
+});`,
   },
 ];
 
