@@ -1217,7 +1217,7 @@ export default function Portfolio() {
                       {/* Snippet / Animation side */}
                       <div
                         className={`relative z-10 mt-auto flex flex-col overflow-hidden rounded-xl border border-white/10 bg-black/40 shadow-2xl md:mt-0 ${
-                          project.video ? "w-full" : "h-56 w-full"
+                          project.video || project.image ? "w-full" : "h-56 w-full"
                         }`}
                       >
                         {/* Fake Window Header */}
@@ -1226,7 +1226,11 @@ export default function Portfolio() {
                           <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
                           <div className="h-2.5 w-2.5 rounded-full bg-green-500/80" />
                           <div className="ml-2 font-mono text-[10px] tracking-widest text-gray-500">
-                            {project.video ? "Live Preview" : `${project.slug}.js`}
+                            {project.video
+                              ? "Live Preview"
+                              : project.image
+                              ? project.previewLabel || "Visual Preview"
+                              : project.filename || `${project.slug}.js`}
                           </div>
                         </div>
                         
@@ -1241,6 +1245,16 @@ export default function Portfolio() {
                                 muted
                                 playsInline
                                 className="h-auto max-h-[60vh] w-full rounded-xl border border-white/10 shadow-2xl opacity-95 transition-all duration-500 group-hover:opacity-100"
+                              />
+                            </div>
+                          </div>
+                        ) : project.image ? (
+                          <div className="relative flex items-center justify-center overflow-hidden bg-black/40 p-4 sm:p-6">
+                            <div className="w-3/5 max-w-[320px]">
+                              <img
+                                src={project.image}
+                                alt={`${project.name} preview`}
+                                className="h-auto max-h-[60vh] w-full rounded-xl border border-white/10 shadow-2xl opacity-95 transition-all duration-500 group-hover:scale-[1.02] group-hover:opacity-100 object-contain"
                               />
                             </div>
                           </div>
