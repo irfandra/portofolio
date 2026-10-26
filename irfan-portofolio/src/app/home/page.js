@@ -30,6 +30,9 @@ import {
   MapPin,
   ChevronRight,
   Building2,
+  Server,
+  Cpu,
+  Terminal,
 } from "lucide-react";
 import {
   SiReact,
@@ -50,7 +53,10 @@ import {
   SiPython,
   SiPhp,
   SiCplusplus,
+  SiWhatsapp,
+  SiGo,
 } from "react-icons/si";
+import { FaWindows, FaJava } from "react-icons/fa6";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, OrbitControls, Environment, Stage } from "@react-three/drei";
@@ -1314,73 +1320,75 @@ export default function Portfolio() {
             {[
               [
                 "01",
-                "Frontend",
-                Braces,
-                [
-                  ["React.js", SiReact],
-                  ["React Native", SiReact],
-                  ["Angular", SiAngular],
-                  ["Next.js", SiNextdotjs],
-                ],
-              ],
-              [
-                "02",
                 "Backend",
-                Wrench,
+                Server,
                 [
                   ["Node.js", SiNodedotjs],
-                  ["Java", Code2],
-                  ["Spring Boot", SiSpringboot],
+                  ["Java (Spring Boot/MVC)", SiSpringboot],
                   ["REST APIs", Network],
                   ["Microservices", Blocks],
                 ],
               ],
               [
+                "02",
+                "Frontend",
+                Braces,
+                [
+                  ["React.js", SiReact],
+                  ["React Native", Smartphone],
+                  ["Angular", SiAngular],
+                  ["Next.js", SiNextdotjs],
+                ],
+              ],
+              [
                 "03",
-                "Data",
+                "Databases",
                 Database,
                 [
                   ["SQL Server", Database],
                   ["MySQL", SiMysql],
                   ["PostgreSQL", SiPostgresql],
-                  ["SQL", FileCode2],
                 ],
               ],
               [
                 "04",
-                "Cloud & Tools",
-                Cloud,
+                "Tools & Platforms",
+                Wrench,
                 [
                   ["Docker", SiDocker],
                   ["Git", SiGit],
                   ["Linux", SiLinux],
-                  ["SAP Integration", SiSap],
-                  ["Payment Gateways", CreditCard],
+                  ["Windows", FaWindows],
+                  ["WhatsApp Business API", SiWhatsapp],
+                  ["Payment gateways", CreditCard],
+                  ["SAP integration", SiSap],
                 ],
               ],
               [
                 "05",
-                "Mobile & Web3",
-                Smartphone,
+                "Blockchain/Web3",
+                Cpu,
                 [
                   ["Solidity", SiSolidity],
                   ["Hardhat", Wrench],
                   ["Polygon", SiPolygon],
-                  ["NFT Minting", Blocks],
                   ["Smart Contracts", FileCode2],
+                  ["NFT Minting", Blocks],
                 ],
               ],
               [
                 "06",
-                "Languages & AI",
-                BrainCircuit,
+                "Languages",
+                Terminal,
                 [
-                  ["TypeScript", SiTypescript],
-                  ["JavaScript", SiJavascript],
-                  ["Python", SiPython],
-                  ["Golang", Code2],
+                  ["JavaScript/TypeScript", SiTypescript],
+                  ["Java", FaJava],
+                  ["Solidity", SiSolidity],
+                  ["Golang", SiGo],
                   ["PHP", SiPhp],
+                  ["Python", SiPython],
                   ["C++", SiCplusplus],
+                  ["SQL", Database],
                 ],
               ],
             ].map(([number, category, Icon, skills]) => (
