@@ -1500,11 +1500,11 @@ export default function Portfolio() {
             <div className="space-y-3">
               {[
                 [
-                  "Person in Charge",
+                  "Person in Charge, Interweek",
                   "Interweek - Managed schedule and finance of a university futsal competition (2018)",
                 ],
                 [
-                  "Person in Charge",
+                  "Person in Charge, Disciplinary Commission",
                   "Disciplinary Commission FTUI - Oversaw discipline during student orientation (2018)",
                 ],
                 [
