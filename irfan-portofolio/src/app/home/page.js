@@ -1016,7 +1016,7 @@ export default function Portfolio() {
                       {/* Logo Frame */}
                       <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-2 text-white shadow-lg backdrop-blur-sm transition-transform duration-500 group-hover:scale-110 group-hover:border-white/20">
                         {experience.logo ? (
-                          <img src={experience.logo} alt={`${experience.company} logo`} className="h-full w-full object-contain drop-shadow-md" />
+                          <img src={experience.logo} alt={`${experience.company} logo`} loading="lazy" className="h-full w-full object-contain drop-shadow-md" />
                         ) : (
                           <Building2 size={28} className="opacity-80" />
                         )}

@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 export function middleware(request) {
-  const hostname = request.headers.get("host")?.split(":")[0];
+  const forwardedHost = request.headers
+    .get("x-forwarded-host")
+    ?.split(",")[0]
+    .trim();
+  const hostname = (forwardedHost || request.headers.get("host"))?.split(":")[0];
 
   if (hostname?.startsWith("www.") || request.nextUrl.pathname === "/") {
     const url = request.nextUrl.clone();

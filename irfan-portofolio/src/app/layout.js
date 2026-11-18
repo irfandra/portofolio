@@ -3,12 +3,15 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Analytics } from "@vercel/analytics/next"
 
 export const metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+  ),
   title: {
     default: "Irfan Rahmanindra | Full Stack Software Engineer",
     template: "%s | Irfan Rahmanindra",
   },
   description:
-    "Irfan Rahmanindra is a full stack software engineer and IT specialist based in Jakarta, Indonesia, specializing in scalable web applications, enterprise systems, and technology strategy.",
+    "Irfan Rahmanindra is a full stack software engineer in Jakarta, building scalable web applications and enterprise systems.",
   keywords: [
     "Irfan Rahmanindra",
     "full stack software engineer",
@@ -22,9 +25,18 @@ export const metadata = {
     type: "website",
     locale: "en_US",
     siteName: "Irfan Rahmanindra",
+    url: "/home",
     title: "Irfan Rahmanindra | Full Stack Software Engineer",
     description:
       "Portfolio of Irfan Rahmanindra, a full stack software engineer building scalable enterprise software and modern web applications.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Irfan Rahmanindra, Full Stack Software Engineer",
+      },
+    ],
   },
   twitter: {
     card: "summary",
